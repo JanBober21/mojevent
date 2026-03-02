@@ -11,8 +11,9 @@ class RestaurantAdmin(admin.ModelAdmin):
     list_filter = ["city", "is_active", "has_parking", "has_garden", "has_dance_floor"]
     search_fields = ["name", "city", "address"]
     fieldsets = (
-        (None, {"fields": ("name", "description", "image", "is_active")}),
+        (None, {"fields": ("name", "description", "is_active")}),
         ("Adres i kontakt", {"fields": ("address", "city", "phone", "email", "website")}),
+        ("Zdjęcia", {"fields": (("image", "image_url"),)}),
         ("Lokalizacja GPS", {"fields": (("latitude", "longitude"),)}),
         ("Parametry", {"fields": ("max_guests", "price_per_person")}),
         ("Udogodnienia", {"fields": ("has_parking", "has_garden", "has_dance_floor", "has_accommodation")}),

@@ -14,6 +14,7 @@ class Restaurant(models.Model):
     email = models.EmailField("E-mail", blank=True)
     website = models.URLField("Strona WWW", blank=True)
     image = models.ImageField("Zdjęcie", upload_to="restaurants/", blank=True, null=True)
+    image_url = models.URLField("Link do zdjęcia", blank=True, help_text="Alternatywa dla przesłanego pliku")
     max_guests = models.PositiveIntegerField("Maks. liczba gości", default=100)
     price_per_person = models.DecimalField(
         "Cena za osobę (PLN)", max_digits=8, decimal_places=2, default=0
@@ -45,6 +46,12 @@ class Restaurant(models.Model):
         if reviews.exists():
             return round(reviews.aggregate(models.Avg("rating"))["rating__avg"], 1)
         return None
+
+    def get_image_url(self):
+        """Return image URL - either uploaded file or external URL."""
+        if self.image:
+            return self.image.url
+        return self.image_url
 
 
 class EventType(models.TextChoices):

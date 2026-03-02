@@ -13,8 +13,8 @@
 <div class="row">
     <!-- Kolumna główna -->
     <div class="col-lg-8">
-        {% if restaurant.image %}
-        <img src="{{ restaurant.image.url }}" class="img-fluid rounded-3 mb-4 w-100"
+        {% if restaurant.get_image_url %}
+        <img src="{{ restaurant.get_image_url }}" class="img-fluid rounded-3 mb-4 w-100"
              alt="{{ restaurant.name }}" style="max-height: 400px; object-fit: cover;">
         {% else %}
         <div class="bg-secondary rounded-3 mb-4 d-flex align-items-center justify-content-center"

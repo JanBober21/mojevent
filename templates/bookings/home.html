@@ -86,8 +86,8 @@
     {% for restaurant in featured_restaurants %}
     <div class="col-md-4">
         <div class="card h-100 shadow-sm restaurant-card">
-            {% if restaurant.image %}
-            <img src="{{ restaurant.image.url }}" class="card-img-top" alt="{{ restaurant.name }}"
+            {% if restaurant.get_image_url %}
+            <img src="{{ restaurant.get_image_url }}" class="card-img-top" alt="{{ restaurant.name }}"
                  style="height: 200px; object-fit: cover;">
             {% else %}
             <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center"

@@ -134,8 +134,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const markers = {{ map_markers_json|safe }};
-    if (markers.length === 0) return;
+    console.log('Markers data:', markers);
+    
+    if (!markers || markers.length === 0) {
+        console.log('No markers found, hiding map');
+        document.getElementById('map').style.display = 'none';
+        document.querySelector('h2:has(+ #map)').style.display = 'none';
+        return;
+    }
 
+    console.log('Creating map with', markers.length, 'markers');
     const map = L.map('map').setView([52.0, 19.5], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -144,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const bounds = [];
     markers.forEach(function(m) {
+        console.log('Adding marker:', m.name, m.lat, m.lng);
         const marker = L.marker([m.lat, m.lng]).addTo(map);
         marker.bindPopup(
             '<strong>' + m.name + '</strong><br>' +

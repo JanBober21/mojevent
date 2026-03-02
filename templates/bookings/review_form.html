@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Dodaj opinię — EventBook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-star"></i> Dodaj opinię — {{ restaurant.name }}</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Ocena</label>
+                        {{ form.rating }}
+                        {% if form.rating.errors %}
+                        <div class="text-danger small">{{ form.rating.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Komentarz</label>
+                        {{ form.comment }}
+                        {% if form.comment.errors %}
+                        <div class="text-danger small">{{ form.comment.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send"></i> Wyślij opinię
+                    </button>
+                    <a href="{% url 'restaurant_detail' restaurant.pk %}" class="btn btn-outline-secondary ms-2">
+                        Anuluj
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

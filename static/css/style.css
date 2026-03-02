@@ -1,0 +1,98 @@
+/* ── EventBook — Custom Styles ─────────────────────────────────────────────── */
+
+/* Hero section */
+.hero-section {
+    background: linear-gradient(135deg, #1a73e8 0%, #6c3faa 50%, #e8451a 100%);
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Card hover effect */
+.restaurant-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.restaurant-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Event type cards */
+.event-card {
+    transition: transform 0.2s ease;
+}
+
+.event-card:hover {
+    transform: translateY(-6px);
+}
+
+.event-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Star rating */
+.text-warning .bi-star-fill,
+.text-warning .bi-star {
+    font-size: 1rem;
+}
+
+/* Badge styling */
+.badge {
+    font-weight: 500;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+/* Form improvements */
+.form-control:focus,
+.form-select:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        min-height: 200px;
+    }
+
+    .hero-section h1 {
+        font-size: 1.8rem;
+    }
+
+    .hero-section .lead {
+        font-size: 1rem;
+    }
+}
+
+/* Smooth page transitions */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Table styling */
+.table th {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    background: transparent;
+    padding: 0;
+}

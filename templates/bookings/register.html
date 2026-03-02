@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Rejestracja — EventBook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0"><i class="bi bi-person-plus"></i> Rejestracja</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Nazwa użytkownika *</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                            <div class="text-danger small">{{ form.username.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted">{{ form.username.help_text }}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Imię *</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                            <div class="text-danger small">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nazwisko *</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                            <div class="text-danger small">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">E-mail *</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hasło *</label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}
+                            <div class="text-danger small">{{ form.password1.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Powtórz hasło *</label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}
+                            <div class="text-danger small">{{ form.password2.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg mt-4">
+                        <i class="bi bi-person-plus"></i> Zarejestruj się
+                    </button>
+                </form>
+
+                <hr>
+                <p class="text-center mb-0">
+                    Masz już konto?
+                    <a href="{% url 'login' %}">Zaloguj się</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

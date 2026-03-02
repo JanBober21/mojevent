@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Logowanie — EventBook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0"><i class="bi bi-box-arrow-in-right"></i> Logowanie</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Nieprawidłowa nazwa użytkownika lub hasło.
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label">Nazwa użytkownika</label>
+                        <input type="text" name="username" class="form-control" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Hasło</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+
+                    {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="bi bi-box-arrow-in-right"></i> Zaloguj się
+                    </button>
+                </form>
+
+                <hr>
+                <p class="text-center mb-0">
+                    Nie masz konta?
+                    <a href="{% url 'register' %}">Zarejestruj się</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

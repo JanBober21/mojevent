@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Rezerwacja — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'restaurant_list' %}">Restauracje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'restaurant_detail' restaurant.pk %}">{{ restaurant.name }}</a></li>
+        <li class="breadcrumb-item active">Rezerwacja</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-calendar-plus"></i> Nowa rezerwacja</h4>
+            </div>
+            <div class="card-body">
+                <h5 class="mb-3">{{ restaurant.name }} — {{ restaurant.city }}</h5>
+                <p class="text-muted">
+                    Cena: <strong>{{ restaurant.price_per_person }} zł</strong> / osoba
+                    &middot; Maks. gości: <strong>{{ restaurant.max_guests }}</strong>
+                </p>
+                <hr>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Typ uroczystości *</label>
+                            {{ form.event_type }}
+                            {% if form.event_type.errors %}
+                            <div class="text-danger small">{{ form.event_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Data uroczystości *</label>
+                            {{ form.event_date }}
+                            {% if form.event_date.errors %}
+                            <div class="text-danger small">{{ form.event_date.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Liczba gości *</label>
+                            {{ form.guest_count }}
+                            {% if form.guest_count.errors %}
+                            <div class="text-danger small">{{ form.guest_count.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6>Dane kontaktowe</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Imię *</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                            <div class="text-danger small">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nazwisko *</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                            <div class="text-danger small">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon *</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                            <div class="text-danger small">{{ form.phone.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-mail *</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Dodatkowe uwagi</label>
+                            {{ form.notes }}
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Złóż rezerwację
+                        </button>
+                        <a href="{% url 'restaurant_detail' restaurant.pk %}" class="btn btn-outline-secondary btn-lg ms-2">
+                            Anuluj
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6>Jak to działa?</h6>
+                <ol class="text-muted">
+                    <li class="mb-2">Wypełnij formularz rezerwacji</li>
+                    <li class="mb-2">Otrzymasz potwierdzenie e-mailem</li>
+                    <li class="mb-2">Restauracja potwierdzi rezerwację</li>
+                    <li class="mb-2">Ciesz się uroczystością!</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

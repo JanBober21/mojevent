@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Moje rezerwacje — EventBook{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-journal-check"></i> Moje rezerwacje</h1>
+
+{% if bookings %}
+<div class="table-responsive">
+    <table class="table table-hover shadow-sm">
+        <thead class="table-primary">
+            <tr>
+                <th>#</th>
+                <th>Restauracja</th>
+                <th>Typ uroczystości</th>
+                <th>Data</th>
+                <th>Goście</th>
+                <th>Koszt</th>
+                <th>Status</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking.pk }}</td>
+                <td>
+                    <a href="{% url 'restaurant_detail' booking.restaurant.pk %}">
+                        {{ booking.restaurant.name }}
+                    </a>
+                </td>
+                <td>{{ booking.get_event_type_display }}</td>
+                <td>{{ booking.event_date|date:"d.m.Y" }}</td>
+                <td>{{ booking.guest_count }}</td>
+                <td>{{ booking.total_cost }} zł</td>
+                <td>
+                    <span class="badge
+                        {% if booking.status == 'confirmed' %}bg-success
+                        {% elif booking.status == 'pending' %}bg-warning text-dark
+                        {% elif booking.status == 'cancelled' %}bg-danger
+                        {% else %}bg-secondary{% endif %}">
+                        {{ booking.get_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye"></i>
+                    </a>
+                    {% if booking.status == 'pending' or booking.status == 'confirmed' %}
+                    <form method="post" action="{% url 'booking_cancel' booking.pk %}" class="d-inline"
+                          onsubmit="return confirm('Anulować rezerwację?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-calendar-x fs-1 text-muted"></i>
+    <h4 class="text-muted mt-3">Nie masz jeszcze żadnych rezerwacji</h4>
+    <a href="{% url 'restaurant_list' %}" class="btn btn-primary mt-3">
+        <i class="bi bi-search"></i> Przeglądaj restauracje
+    </a>
+</div>
+{% endif %}
+{% endblock %}

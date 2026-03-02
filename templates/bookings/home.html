@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}EventBook — Rezerwacja restauracji na uroczystości{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="hero-section text-center text-white rounded-4 p-5 mb-5">
+    <h1 class="display-4 fw-bold">Zarezerwuj idealną restaurację</h1>
+    <p class="lead mb-4">Chrzciny, wesela, komunie — znajdź i zarezerwuj wymarzony lokal na wyjątkową uroczystość</p>
+    <div class="d-flex justify-content-center gap-3">
+        <a href="{% url 'restaurant_list' %}" class="btn btn-light btn-lg">
+            <i class="bi bi-search"></i> Przeglądaj restauracje
+        </a>
+        {% if not user.is_authenticated %}
+        <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg">
+            <i class="bi bi-person-plus"></i> Załóż konto
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Typy uroczystości -->
+<h2 class="text-center mb-4">Organizujesz uroczystość?</h2>
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm text-center event-card">
+            <div class="card-body p-4">
+                <div class="event-icon bg-danger-subtle text-danger rounded-circle mx-auto mb-3">
+                    <i class="bi bi-heart-fill fs-1"></i>
+                </div>
+                <h4 class="card-title">Wesele</h4>
+                <p class="card-text text-muted">
+                    Znajdź restaurację z parkietem tanecznym, noclegi dla gości
+                    i wyjątkową atmosferą na Twój wielki dzień.
+                </p>
+                <a href="{% url 'restaurant_list' %}?has_dance_floor=on" class="btn btn-outline-danger">
+                    Szukaj lokalu
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm text-center event-card">
+            <div class="card-body p-4">
+                <div class="event-icon bg-info-subtle text-info rounded-circle mx-auto mb-3">
+                    <i class="bi bi-droplet-fill fs-1"></i>
+                </div>
+                <h4 class="card-title">Chrzciny</h4>
+                <p class="card-text text-muted">
+                    Kameralna uroczystość w pięknym otoczeniu.
+                    Idealne lokale na rodzinne spotkanie po chrzcie świętym.
+                </p>
+                <a href="{% url 'restaurant_list' %}" class="btn btn-outline-info">
+                    Szukaj lokalu
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm text-center event-card">
+            <div class="card-body p-4">
+                <div class="event-icon bg-success-subtle text-success rounded-circle mx-auto mb-3">
+                    <i class="bi bi-book-fill fs-1"></i>
+                </div>
+                <h4 class="card-title">Komunia Święta</h4>
+                <p class="card-text text-muted">
+                    Przyjęcie komunijne w restauracji z ogrodem —
+                    stwórz niezapomniane wspomnienia dla dziecka.
+                </p>
+                <a href="{% url 'restaurant_list' %}?has_garden=on" class="btn btn-outline-success">
+                    Szukaj lokalu
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mapa restauracji -->
+<h2 class="text-center mb-4"><i class="bi bi-geo-alt"></i> Nasze restauracje na mapie</h2>
+<div id="map" class="rounded-4 shadow-sm mb-5" style="height: 450px; z-index: 0;"></div>
+
+<!-- Wyróżnione restauracje -->
+{% if featured_restaurants %}
+<h2 class="text-center mb-4">Polecane restauracje</h2>
+<div class="row g-4">
+    {% for restaurant in featured_restaurants %}
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm restaurant-card">
+            {% if restaurant.image %}
+            <img src="{{ restaurant.image.url }}" class="card-img-top" alt="{{ restaurant.name }}"
+                 style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center"
+                 style="height: 200px;">
+                <i class="bi bi-image text-white fs-1"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ restaurant.name }}</h5>
+                <p class="text-muted mb-1">
+                    <i class="bi bi-geo-alt"></i> {{ restaurant.city }}
+                </p>
+                {% if restaurant.avg_rating %}
+                <p class="mb-1">
+                    <span class="badge bg-warning text-dark">
+                        <i class="bi bi-star-fill"></i> {{ restaurant.avg_rating|floatformat:1 }}
+                    </span>
+                </p>
+                {% endif %}
+                <p class="mb-2">
+                    <strong>{{ restaurant.price_per_person }} zł</strong> / osoba
+                    &middot; do {{ restaurant.max_guests }} gości
+                </p>
+                <div class="mb-2">
+                    {% if restaurant.has_parking %}<span class="badge bg-light text-dark me-1"><i class="bi bi-p-circle"></i> Parking</span>{% endif %}
+                    {% if restaurant.has_garden %}<span class="badge bg-light text-dark me-1"><i class="bi bi-tree"></i> Ogród</span>{% endif %}
+                    {% if restaurant.has_dance_floor %}<span class="badge bg-light text-dark me-1"><i class="bi bi-music-note-beamed"></i> Parkiet</span>{% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{% url 'restaurant_detail' restaurant.pk %}" class="btn btn-primary w-100">
+                    Zobacz szczegóły
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Leaflet CSS & JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const markers = {{ map_markers_json|safe }};
+    if (markers.length === 0) return;
+
+    const map = L.map('map').setView([52.0, 19.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18
+    }).addTo(map);
+
+    const bounds = [];
+    markers.forEach(function(m) {
+        const marker = L.marker([m.lat, m.lng]).addTo(map);
+        marker.bindPopup(
+            '<strong>' + m.name + '</strong><br>' +
+            '<i class="bi bi-geo-alt"></i> ' + m.city + '<br>' +
+            m.price + ' zł/os. &middot; do ' + m.max_guests + ' gości<br>' +
+            '<a href="/restauracje/' + m.pk + '/" class="btn btn-sm btn-primary mt-2">Zobacz</a>'
+        );
+        bounds.push([m.lat, m.lng]);
+    });
+
+    if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+    } else if (bounds.length === 1) {
+        map.setView(bounds[0], 12);
+    }
+});
+</script>
+{% endblock %}

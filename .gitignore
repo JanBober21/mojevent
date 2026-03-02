@@ -14,6 +14,7 @@ db.sqlite3
 db.sqlite3-journal
 *.log
 media/
+config/settings.py
 
 # Static files (collected)
 staticfiles/

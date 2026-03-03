@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .models import Booking, Review, Restaurant
+from .models import Booking, Review, Restaurant, BookingNote
 
 
 class BookingForm(forms.ModelForm):

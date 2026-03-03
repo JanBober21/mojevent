@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, date
 import json
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
@@ -395,12 +395,38 @@ def owner_booking_detail(request, booking_id):
             booking.status = Booking.Status.CANCELLED
             booking.save()
             messages.success(request, f"Rezerwacja #{booking.id} została anulowana.")
+
+        elif action == "add_note":
+            note_date = request.POST.get("note_date")
+            note_title = request.POST.get("note_title", "").strip()
+            note_content = request.POST.get("note_content", "").strip()
+            if note_date and note_title and note_content:
+                BookingNote.objects.create(
+                    booking=booking,
+                    author=request.user,
+                    date=note_date,
+                    title=note_title,
+                    content=note_content,
+                )
+                messages.success(request, "Notatka została dodana.")
+            else:
+                messages.error(request, "Wypełnij wszystkie pola notatki.")
+
+        elif action == "delete_note":
+            note_id = request.POST.get("note_id")
+            BookingNote.objects.filter(id=note_id, booking=booking).delete()
+            messages.success(request, "Notatka została usunięta.")
         
         return redirect("owner_booking_detail", booking_id=booking.id)
+
+    notes = booking.crm_notes.all()
+    today = timezone.now().date().isoformat()
     
     return render(request, "bookings/owner/booking_detail.html", {
         "restaurant": restaurant,
         "booking": booking,
+        "notes": notes,
+        "today": today,
     })
 
 

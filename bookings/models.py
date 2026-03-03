@@ -185,3 +185,32 @@ class RestaurantOwner(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} → {self.restaurant.name}"
+
+
+class BookingNote(models.Model):
+    """Notatka CRM do rezerwacji — historia kontaktów z klientem."""
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="crm_notes",
+        verbose_name="Rezerwacja",
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Autor",
+    )
+    date = models.DateField("Data kontaktu")
+    title = models.CharField("Temat / nazwa", max_length=200)
+    content = models.TextField("Treść notatki")
+    created_at = models.DateTimeField("Utworzono", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Notatka CRM"
+        verbose_name_plural = "Notatki CRM"
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.date} — {self.title}"

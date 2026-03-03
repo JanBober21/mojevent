@@ -213,6 +213,85 @@
     </div>
 </div>
 
+<!-- Notatki CRM -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-journal-text"></i> Notatki CRM — historia kontaktów</h5>
+        <span class="badge bg-light text-dark">{{ notes|length }} notatek</span>
+    </div>
+    <div class="card-body">
+        <!-- Formularz dodawania notatki -->
+        <div class="card bg-light mb-4">
+            <div class="card-body">
+                <h6 class="mb-3"><i class="bi bi-plus-circle"></i> Dodaj nową notatkę</h6>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_note">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Data kontaktu *</label>
+                            <input type="date" name="note_date" class="form-control" value="{{ today }}" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Temat / nazwa *</label>
+                            <input type="text" name="note_title" class="form-control" placeholder="np. Rozmowa telefoniczna, Spotkanie, Ustalenia menu..." required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Treść notatki *</label>
+                            <textarea name="note_content" class="form-control" rows="3" placeholder="Szczegóły rozmowy, ustalenia, uwagi..." required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-dark">
+                                <i class="bi bi-plus-circle"></i> Dodaj notatkę
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista notatek -->
+        {% if notes %}
+            {% for note in notes %}
+            <div class="card mb-3 border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="bi bi-chat-left-text text-primary"></i>
+                                {{ note.title }}
+                            </h6>
+                            <small class="text-muted">
+                                <i class="bi bi-calendar-event"></i> {{ note.date|date:"d.m.Y" }}
+                                {% if note.author %}
+                                &middot; <i class="bi bi-person"></i> {{ note.author.get_full_name|default:note.author.username }}
+                                {% endif %}
+                                &middot; <i class="bi bi-clock"></i> dodano {{ note.created_at|date:"d.m.Y H:i" }}
+                            </small>
+                        </div>
+                        <form method="post" class="ms-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_note">
+                            <input type="hidden" name="note_id" value="{{ note.id }}">
+                            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Usunąć tę notatkę?')" title="Usuń notatkę">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <hr class="my-2">
+                    <p class="mb-0">{{ note.content|linebreaks }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-journal-text" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">Brak notatek. Dodaj pierwszą notatkę z rozmowy z klientem.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
 <style>
 .timeline {
     position: relative;

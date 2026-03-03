@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Umowa — Rezerwacja #{{ booking.id }} — {{ restaurant.name }}</title>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 12pt; }
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 30px;
+            color: #222;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #0d6efd;
+            font-size: 1.8em;
+        }
+        .header p {
+            margin: 5px 0 0;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section h2 {
+            font-size: 1.1em;
+            color: #0d6efd;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 5px;
+            margin-bottom: 12px;
+        }
+        .two-col {
+            display: flex;
+            gap: 30px;
+        }
+        .two-col > div { flex: 1; }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dotted #eee;
+        }
+        .info-label { color: #666; }
+        .info-value { font-weight: 600; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+        th, td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .total-row td {
+            font-weight: 700;
+            font-size: 1.1em;
+            border-top: 2px solid #0d6efd;
+            padding-top: 10px;
+        }
+        .terms-box {
+            background: #f8f9fa;
+            border-left: 4px solid #0d6efd;
+            padding: 15px 20px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            padding-top: 20px;
+        }
+        .signature-box {
+            width: 40%;
+            text-align: center;
+        }
+        .signature-line {
+            border-top: 1px solid #222;
+            margin-top: 60px;
+            padding-top: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .btn-bar {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .btn-bar button, .btn-bar a {
+            padding: 10px 24px;
+            font-size: 1em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            margin: 0 5px;
+        }
+        .btn-print {
+            background: #0d6efd;
+            color: #fff;
+        }
+        .btn-back {
+            background: #6c757d;
+            color: #fff;
+        }
+        .deal-badge {
+            display: inline-block;
+            background: #198754;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="btn-bar no-print">
+    <button class="btn-print" onclick="window.print()">🖨️ Drukuj / Zapisz PDF</button>
+    <a class="btn-back" href="{% url 'owner_booking_detail' booking.id %}">← Powrót</a>
+</div>
+
+<div class="header">
+    <h1>📋 Umowa — Potwierdzenie rezerwacji</h1>
+    <p>{{ restaurant.name }} · Rezerwacja #{{ booking.id }}</p>
+    <span class="deal-badge">✅ Deal zamknięty {{ booking.deal_closed_at|date:"d.m.Y" }}</span>
+</div>
+
+<div class="section">
+    <h2>📌 Strony umowy</h2>
+    <div class="two-col">
+        <div>
+            <strong>Usługodawca (Firma):</strong><br>
+            {{ restaurant.name }}<br>
+            {{ restaurant.address }}, {{ restaurant.city }}<br>
+            {% if restaurant.phone %}Tel: {{ restaurant.phone }}<br>{% endif %}
+            {% if restaurant.email %}E-mail: {{ restaurant.email }}<br>{% endif %}
+            {% if restaurant.website %}<a href="{{ restaurant.website }}">{{ restaurant.website }}</a>{% endif %}
+        </div>
+        <div>
+            <strong>Zamawiający (Klient):</strong><br>
+            {{ booking.first_name }} {{ booking.last_name }}<br>
+            Tel: {{ booking.phone }}<br>
+            E-mail: {{ booking.email }}
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <h2>📅 Szczegóły wydarzenia</h2>
+    <div class="info-row">
+        <span class="info-label">Data wydarzenia</span>
+        <span class="info-value">{{ booking.event_date|date:"d.m.Y" }} ({{ booking.event_date|date:"l" }})</span>
+    </div>
+    {% if booking.event_type %}
+    <div class="info-row">
+        <span class="info-label">Typ uroczystości</span>
+        <span class="info-value">{{ booking.get_event_type_display }}</span>
+    </div>
+    {% endif %}
+    {% if booking.guest_count %}
+    <div class="info-row">
+        <span class="info-label">Liczba gości</span>
+        <span class="info-value">{{ booking.guest_count }} osób</span>
+    </div>
+    {% endif %}
+    <div class="info-row">
+        <span class="info-label">Typ firmy</span>
+        <span class="info-value">{{ restaurant.get_firm_type_display }}</span>
+    </div>
+    {% if restaurant.firm_type == 'attraction' and restaurant.attraction_type %}
+    <div class="info-row">
+        <span class="info-label">Rodzaj atrakcji</span>
+        <span class="info-value">{{ restaurant.get_attraction_type_display }}</span>
+    </div>
+    {% endif %}
+</div>
+
+{% if menu_selections %}
+<div class="section">
+    <h2>🍽️ Wybrane menu</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Pozycja</th>
+                <th>Kategoria</th>
+                <th style="text-align:center">Ilość</th>
+                <th style="text-align:right">Cena jedn.</th>
+                <th style="text-align:right">Suma</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sel in menu_selections %}
+            <tr>
+                <td>{{ sel.menu_item.name }}</td>
+                <td>{{ sel.menu_item.get_category_display }}</td>
+                <td style="text-align:center">{{ sel.quantity }}</td>
+                <td style="text-align:right">{{ sel.menu_item.price }} zł</td>
+                <td style="text-align:right">{{ sel.subtotal }} zł</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="4">Suma za menu</td>
+                <td style="text-align:right">{{ menu_total }} zł</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="section">
+    <h2>💰 Uzgodniona cena</h2>
+    <div class="info-row" style="font-size:1.2em;">
+        <span class="info-label">Cena końcowa</span>
+        <span class="info-value" style="color:#198754;">{{ booking.deal_agreed_price }} zł</span>
+    </div>
+</div>
+
+{% if booking.deal_terms %}
+<div class="section">
+    <h2>📝 Warunki i ustalenia</h2>
+    <div class="terms-box">{{ booking.deal_terms }}</div>
+</div>
+{% endif %}
+
+{% if booking.notes %}
+<div class="section">
+    <h2>💬 Uwagi klienta</h2>
+    <div class="terms-box">{{ booking.notes }}</div>
+</div>
+{% endif %}
+
+<div class="section">
+    <h2>ℹ️ Informacje dodatkowe</h2>
+    <div class="info-row">
+        <span class="info-label">Data złożenia rezerwacji</span>
+        <span class="info-value">{{ booking.created_at|date:"d.m.Y H:i" }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Data zamknięcia dealu</span>
+        <span class="info-value">{{ booking.deal_closed_at|date:"d.m.Y H:i" }}</span>
+    </div>
+    <div class="info-row">
+        <span class="info-label">Numer umowy</span>
+        <span class="info-value">EVB/{{ booking.id }}/{{ booking.deal_closed_at|date:"Y" }}</span>
+    </div>
+</div>
+
+<div class="signatures">
+    <div class="signature-box">
+        <div class="signature-line">Podpis Usługodawcy<br><small>{{ restaurant.name }}</small></div>
+    </div>
+    <div class="signature-box">
+        <div class="signature-line">Podpis Zamawiającego<br><small>{{ booking.first_name }} {{ booking.last_name }}</small></div>
+    </div>
+</div>
+
+<p style="text-align:center; margin-top:40px; font-size:0.8em; color:#999;">
+    Dokument wygenerowany w systemie EventBook · {{ booking.deal_closed_at|date:"d.m.Y H:i" }}
+</p>
+
+</body>
+</html>

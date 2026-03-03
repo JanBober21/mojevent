@@ -133,6 +133,12 @@ class Booking(models.Model):
     phone = models.CharField("Telefon kontaktowy", max_length=20)
     email = models.EmailField("E-mail kontaktowy")
     notes = models.TextField("Dodatkowe uwagi", blank=True)
+    deal_closed_at = models.DateTimeField("Data zamknięcia dealu", null=True, blank=True)
+    deal_agreed_price = models.DecimalField(
+        "Uzgodniona cena końcowa (zł)", max_digits=10, decimal_places=2,
+        null=True, blank=True,
+    )
+    deal_terms = models.TextField("Warunki umowy / ustalenia", blank=True)
     created_at = models.DateTimeField("Data utworzenia", auto_now_add=True)
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)
 

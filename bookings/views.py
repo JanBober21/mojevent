@@ -508,6 +508,31 @@ def owner_booking_detail(request, booking_id):
                     content=content,
                 )
                 messages.success(request, "Wiadomość wysłana.")
+
+        elif action == "close_deal":
+            agreed_price = request.POST.get("deal_agreed_price", "").strip()
+            deal_terms = request.POST.get("deal_terms", "").strip()
+            if agreed_price:
+                try:
+                    from decimal import Decimal
+                    booking.deal_agreed_price = Decimal(agreed_price)
+                    booking.deal_terms = deal_terms
+                    booking.deal_closed_at = timezone.now()
+                    booking.status = Booking.Status.CONFIRMED
+                    booking.save()
+                    messages.success(request, "Deal zamknięty! Umowa została wygenerowana.")
+                    return redirect("owner_booking_agreement", booking_id=booking.id)
+                except Exception:
+                    messages.error(request, "Nieprawidłowa cena.")
+            else:
+                messages.error(request, "Podaj uzgodnioną cenę.")
+
+        elif action == "reopen_deal":
+            booking.deal_closed_at = None
+            booking.deal_agreed_price = None
+            booking.deal_terms = ""
+            booking.save()
+            messages.success(request, "Deal został otwarty ponownie.")
         
         return redirect("owner_booking_detail", booking_id=booking.id)
 
@@ -521,6 +546,35 @@ def owner_booking_detail(request, booking_id):
         "notes": notes,
         "chat_messages": chat_messages,
         "today": today,
+    })
+
+
+@login_required
+def owner_booking_agreement(request, booking_id):
+    """Wyświetlenie umowy / potwierdzenia dealu — do druku / PDF."""
+    try:
+        owner = request.user.restaurant_owner
+    except RestaurantOwner.DoesNotExist:
+        return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        return redirect("owner_restaurant_create")
+
+    booking = get_object_or_404(Booking, id=booking_id, restaurant=restaurant)
+
+    if not booking.deal_closed_at:
+        messages.error(request, "Deal nie został jeszcze zamknięty.")
+        return redirect("owner_booking_detail", booking_id=booking.id)
+
+    menu_selections = booking.menu_selections.select_related("menu_item").all()
+    menu_total = sum(s.subtotal for s in menu_selections)
+
+    return render(request, "bookings/owner/agreement.html", {
+        "restaurant": restaurant,
+        "booking": booking,
+        "menu_selections": menu_selections,
+        "menu_total": menu_total,
     })
 
 

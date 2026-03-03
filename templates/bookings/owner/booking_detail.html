@@ -210,6 +210,61 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- Zamykanie dealu -->
+        {% if booking.deal_closed_at %}
+        <div class="card shadow-sm border-success mt-3">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-handshake"></i> Deal zamknięty</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Uzgodniona kwota:</strong> {{ booking.deal_agreed_price }} zł</p>
+                <p class="mb-1"><strong>Data zamknięcia:</strong> {{ booking.deal_closed_at|date:"d.m.Y H:i" }}</p>
+                {% if booking.deal_terms %}
+                <p class="mb-1"><strong>Warunki:</strong></p>
+                <p class="text-muted small">{{ booking.deal_terms|linebreaksbr }}</p>
+                {% endif %}
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{% url 'owner_booking_agreement' booking.id %}" class="btn btn-outline-success" target="_blank">
+                        <i class="bi bi-file-earmark-text me-2"></i>Pokaż umowę
+                    </a>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reopen_deal">
+                        <button type="submit" class="btn btn-outline-warning w-100" onclick="return confirm('Czy na pewno chcesz otworzyć deal ponownie?')">
+                            <i class="bi bi-arrow-counterclockwise me-2"></i>Otwórz ponownie
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% elif booking.status != 'cancelled' %}
+        <div class="card shadow-sm mt-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-handshake"></i> Zamknij deal</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="close_deal">
+                    <div class="mb-3">
+                        <label for="deal_agreed_price" class="form-label">Uzgodniona kwota (zł) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" min="0" name="deal_agreed_price" id="deal_agreed_price" class="form-control" required placeholder="np. 5000.00">
+                    </div>
+                    <div class="mb-3">
+                        <label for="deal_terms" class="form-label">Dodatkowe warunki / ustalenia</label>
+                        <textarea name="deal_terms" id="deal_terms" class="form-control" rows="3" placeholder="Np. zaliczka 50%, menu wegetariańskie dla 10 osób..."></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Czy na pewno chcesz zamknąć deal i wygenerować umowę?')">
+                            <i class="bi bi-check2-circle me-2"></i>Zamknij deal i generuj umowę
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
     </div>
 </div>
 

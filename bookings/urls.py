@@ -32,6 +32,7 @@ urlpatterns = [
     path("owner/", views.owner_dashboard, name="owner_dashboard"),
     path("owner/bookings/", views.owner_bookings, name="owner_bookings"),
     path("owner/booking/<int:booking_id>/", views.owner_booking_detail, name="owner_booking_detail"),
+    path("owner/booking/<int:booking_id>/umowa/", views.owner_booking_agreement, name="owner_booking_agreement"),
     path("owner/calendar/", views.owner_calendar, name="owner_calendar"),
     path("owner/restauracja/dodaj/", views.owner_restaurant_create, name="owner_restaurant_create"),
     path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),

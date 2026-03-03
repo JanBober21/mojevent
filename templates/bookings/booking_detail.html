@@ -61,19 +61,26 @@
                 </div>
 
                 <hr>
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <small class="text-muted">
                         Utworzono: {{ booking.created_at|date:"d.m.Y H:i" }}
                     </small>
-                    {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-                    <form method="post" action="{% url 'booking_cancel' booking.pk %}"
-                          onsubmit="return confirm('Czy na pewno chcesz anulować rezerwację?');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="bi bi-x-circle"></i> Anuluj rezerwację
-                        </button>
-                    </form>
-                    {% endif %}
+                    <div class="d-flex gap-2">
+                        {% if booking.status != 'cancelled' %}
+                        <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ booking.get_event_type_display|urlencode }}+-+{{ booking.restaurant.name|urlencode }}&dates={{ booking.event_date|date:'Ymd' }}T100000/{{ booking.event_date|date:'Ymd' }}T220000&details=Rezerwacja+nr+{{ booking.pk }}%0AGości:+{{ booking.guest_count }}%0AKontakt:+{{ booking.phone }}%0A{{ booking.email }}&location={{ booking.restaurant.address|urlencode }},+{{ booking.restaurant.city|urlencode }}&sf=true" target="_blank" class="btn btn-outline-primary">
+                            <i class="bi bi-google"></i> Dodaj do Google Calendar
+                        </a>
+                        {% endif %}
+                        {% if booking.status == 'pending' or booking.status == 'confirmed' %}
+                        <form method="post" action="{% url 'booking_cancel' booking.pk %}"
+                              onsubmit="return confirm('Czy na pewno chcesz anulować rezerwację?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="bi bi-x-circle"></i> Anuluj rezerwację
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

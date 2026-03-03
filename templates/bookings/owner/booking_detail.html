@@ -142,6 +142,20 @@
             </div>
         </div>
 
+        <!-- Google Calendar -->
+        {% if booking.status != 'cancelled' %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-plus"></i> Kalendarz</h5>
+            </div>
+            <div class="card-body">
+                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ booking.get_event_type_display|urlencode }}+-+{{ restaurant.name|urlencode }}&dates={{ booking.event_date|date:'Ymd' }}T100000/{{ booking.event_date|date:'Ymd' }}T220000&details=Rezerwacja+nr+{{ booking.id }}%0AGości:+{{ booking.guest_count }}%0AKlient:+{{ booking.first_name }}+{{ booking.last_name }}%0ATelefon:+{{ booking.phone }}%0AEmail:+{{ booking.email }}&location={{ restaurant.address|urlencode }},+{{ restaurant.city|urlencode }}&sf=true" target="_blank" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-google"></i> Dodaj do Google Calendar
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Akcje -->
         {% if booking.status == 'pending' %}
         <div class="card shadow-sm">

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import json
 
 from .models import Restaurant, Booking, Review, RestaurantOwner
-from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm
+from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
 # ── Strona główna ──────────────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ def review_create(request, restaurant_pk):
 # ── Autoryzacja ────────────────────────────────────────────────────────────────
 
 def register(request):
-    """Rejestracja nowego użytkownika."""
+    """Rejestracja nowego użytkownika (klienta)."""
     if request.method == "POST":
         form = UserRegisterForm(request.POST)
         if form.is_valid():
@@ -220,6 +220,72 @@ def register(request):
     return render(request, "bookings/register.html", {"form": form})
 
 
+def owner_register(request):
+    """Rejestracja właściciela restauracji."""
+    if request.method == "POST":
+        form = OwnerRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            RestaurantOwner.objects.create(user=user, restaurant=None)
+            login(request, user)
+            messages.success(request, f"Witaj, {user.first_name}! Konto właściciela zostało utworzone. Dodaj teraz swoją restaurację.")
+            return redirect("owner_restaurant_create")
+    else:
+        form = OwnerRegisterForm()
+    return render(request, "bookings/owner_register.html", {"form": form})
+
+
+@login_required
+def owner_restaurant_create(request):
+    """Dodawanie restauracji przez właściciela."""
+    try:
+        owner = request.user.restaurant_owner
+    except RestaurantOwner.DoesNotExist:
+        messages.error(request, "Nie masz konta właściciela restauracji.")
+        return redirect("home")
+
+    if owner.restaurant:
+        messages.info(request, "Masz już przypisaną restaurację. Możesz ją edytować.")
+        return redirect("owner_restaurant_edit")
+
+    if request.method == "POST":
+        form = RestaurantForm(request.POST)
+        if form.is_valid():
+            restaurant = form.save()
+            owner.restaurant = restaurant
+            owner.save()
+            messages.success(request, f"Restauracja '{restaurant.name}' została dodana!")
+            return redirect("owner_dashboard")
+    else:
+        form = RestaurantForm()
+    return render(request, "bookings/owner/restaurant_form.html", {"form": form, "editing": False})
+
+
+@login_required
+def owner_restaurant_edit(request):
+    """Edycja restauracji przez właściciela."""
+    try:
+        owner = request.user.restaurant_owner
+        restaurant = owner.restaurant
+    except RestaurantOwner.DoesNotExist:
+        messages.error(request, "Nie masz konta właściciela restauracji.")
+        return redirect("home")
+
+    if not restaurant:
+        messages.info(request, "Najpierw dodaj swoją restaurację.")
+        return redirect("owner_restaurant_create")
+
+    if request.method == "POST":
+        form = RestaurantForm(request.POST, instance=restaurant)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Dane restauracji zostały zaktualizowane.")
+            return redirect("owner_dashboard")
+    else:
+        form = RestaurantForm(instance=restaurant)
+    return render(request, "bookings/owner/restaurant_form.html", {"form": form, "editing": True, "restaurant": restaurant})
+
+
 # ── Panel właścicieli restauracji ─────────────────────────────────────────────
 
 @login_required
@@ -227,10 +293,14 @@ def owner_dashboard(request):
     """Panel główny właściciela restauracji."""
     try:
         owner = request.user.restaurant_owner
-        restaurant = owner.restaurant
     except RestaurantOwner.DoesNotExist:
-        messages.error(request, "Nie masz przypisanej restauracji. Skontaktuj się z administratorem.")
+        messages.error(request, "Nie masz konta właściciela restauracji.")
         return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        messages.info(request, "Najpierw dodaj swoją restaurację.")
+        return redirect("owner_restaurant_create")
     
     today = timezone.now().date()
     
@@ -274,9 +344,12 @@ def owner_bookings(request):
     """Lista wszystkich rezerwacji właściciela restauracji."""
     try:
         owner = request.user.restaurant_owner
-        restaurant = owner.restaurant
     except RestaurantOwner.DoesNotExist:
         return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        return redirect("owner_restaurant_create")
     
     status_filter = request.GET.get("status", "")
     bookings = Booking.objects.filter(restaurant=restaurant)
@@ -300,9 +373,12 @@ def owner_booking_detail(request, booking_id):
     """Szczegóły rezerwacji z opcją zatwierdzania/odrzucania."""
     try:
         owner = request.user.restaurant_owner
-        restaurant = owner.restaurant
     except RestaurantOwner.DoesNotExist:
         return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        return redirect("owner_restaurant_create")
     
     booking = get_object_or_404(Booking, id=booking_id, restaurant=restaurant)
     
@@ -332,10 +408,13 @@ def owner_calendar(request):
     """Kalendarz rezerwacji restauracji."""
     try:
         owner = request.user.restaurant_owner
-        restaurant = owner.restaurant
     except RestaurantOwner.DoesNotExist:
         messages.error(request, "Nie masz uprawnień do zarządzania restauracją.")
         return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        return redirect("owner_restaurant_create")
     
     # Pobierz wszystkie rezerwacje (nie tylko z wybranego miesiąca)
     bookings = Booking.objects.filter(

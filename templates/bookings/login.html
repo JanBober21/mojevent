@@ -38,10 +38,17 @@
                 </form>
 
                 <hr>
-                <p class="text-center mb-0">
+                <p class="text-center mb-1">
                     Nie masz konta?
-                    <a href="{% url 'register' %}">Zarejestruj się</a>
                 </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <a href="{% url 'register' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-person-plus"></i> Rejestracja klienta
+                    </a>
+                    <a href="{% url 'owner_register' %}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-shop"></i> Rejestracja restauracji
+                    </a>
+                </div>
             </div>
         </div>
     </div>

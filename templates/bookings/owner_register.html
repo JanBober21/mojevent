@@ -1,15 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Rejestracja — EventBook{% endblock %}
+{% block title %}Rejestracja restauracji — EventBook{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white text-center">
-                <h4 class="mb-0"><i class="bi bi-person-plus"></i> Rejestracja klienta</h4>
+            <div class="card-header bg-success text-white text-center">
+                <h4 class="mb-0"><i class="bi bi-shop"></i> Rejestracja właściciela restauracji</h4>
             </div>
             <div class="card-body p-4">
+                <p class="text-muted text-center mb-3">
+                    Utwórz konto, aby dodać swoją restaurację do EventBook i zarządzać rezerwacjami.
+                </p>
+
                 <form method="post" novalidate>
                     {% csrf_token %}
 
@@ -67,19 +71,17 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 btn-lg mt-4">
-                        <i class="bi bi-person-plus"></i> Zarejestruj się
+                    <button type="submit" class="btn btn-success w-100 btn-lg mt-4">
+                        <i class="bi bi-shop"></i> Zarejestruj restaurację
                     </button>
                 </form>
 
                 <hr>
-                <p class="text-center mb-1">
-                    Masz już konto?
-                    <a href="{% url 'login' %}">Zaloguj się</a>
+                <p class="text-center mb-0">
+                    Masz już konto? <a href="{% url 'login' %}">Zaloguj się</a>
                 </p>
                 <p class="text-center mb-0">
-                    Jesteś właścicielem restauracji?
-                    <a href="{% url 'owner_register' %}">Zarejestruj restaurację</a>
+                    Jesteś klientem? <a href="{% url 'register' %}">Rejestracja klienta</a>
                 </p>
             </div>
         </div>

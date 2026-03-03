@@ -172,6 +172,8 @@ class RestaurantOwner(models.Model):
         on_delete=models.CASCADE,
         related_name="owners",
         verbose_name="Restauracja",
+        null=True,
+        blank=True,
     )
     is_main_owner = models.BooleanField("Główny właściciel", default=True)
     created_at = models.DateTimeField("Data dodania", auto_now_add=True)

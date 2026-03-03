@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .models import Booking, Review
+from .models import Booking, Review, Restaurant
 
 
 class BookingForm(forms.ModelForm):
@@ -136,3 +136,64 @@ class RestaurantSearchForm(forms.Form):
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )
+
+
+class OwnerRegisterForm(UserCreationForm):
+    """Formularz rejestracji właściciela restauracji."""
+
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={"class": "form-control"}),
+    )
+    first_name = forms.CharField(
+        label="Imię",
+        max_length=100,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    last_name = forms.CharField(
+        label="Nazwisko",
+        max_length=100,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email", "password1", "password2"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["username"].widget.attrs.update({"class": "form-control"})
+        self.fields["password1"].widget.attrs.update({"class": "form-control"})
+        self.fields["password2"].widget.attrs.update({"class": "form-control"})
+
+
+class RestaurantForm(forms.ModelForm):
+    """Formularz dodawania/edycji restauracji."""
+
+    class Meta:
+        model = Restaurant
+        fields = [
+            "name", "description", "address", "city",
+            "phone", "email", "website", "image_url",
+            "max_guests", "price_per_person",
+            "has_parking", "has_garden", "has_dance_floor", "has_accommodation",
+            "latitude", "longitude",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "address": forms.TextInput(attrs={"class": "form-control"}),
+            "city": forms.TextInput(attrs={"class": "form-control"}),
+            "phone": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "website": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://..."}),
+            "image_url": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://...link do zdjęcia"}),
+            "max_guests": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "price_per_person": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "has_parking": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "has_garden": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "has_dance_floor": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "has_accommodation": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "latitude": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001", "placeholder": "np. 52.2297"}),
+            "longitude": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001", "placeholder": "np. 21.0122"}),
+        }

@@ -39,6 +39,11 @@
                                 <i class="bi bi-calendar-check"></i> Rezerwacje
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'owner_restaurant_edit' %}">
+                                <i class="bi bi-pencil-square"></i> Moja restauracja
+                            </a>
+                        </li>
                         {% else %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'booking_list' %}">
@@ -65,8 +70,23 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'login' %}">Zaloguj</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="btn btn-outline-light btn-sm mt-1" href="{% url 'register' %}">Rejestracja</a>
+                    <li class="nav-item dropdown">
+                        <a class="btn btn-outline-light btn-sm mt-1 dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            Rejestracja
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'register' %}">
+                                    <i class="bi bi-person-plus"></i> Jako klient
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'owner_register' %}">
+                                    <i class="bi bi-shop"></i> Jako restauracja
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     {% endif %}
                 </ul>

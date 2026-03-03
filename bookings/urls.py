@@ -33,9 +33,12 @@ urlpatterns = [
     path("owner/bookings/", views.owner_bookings, name="owner_bookings"),
     path("owner/booking/<int:booking_id>/", views.owner_booking_detail, name="owner_booking_detail"),
     path("owner/calendar/", views.owner_calendar, name="owner_calendar"),
+    path("owner/restauracja/dodaj/", views.owner_restaurant_create, name="owner_restaurant_create"),
+    path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),
 
     # Autoryzacja
     path("rejestracja/", views.register, name="register"),
+    path("rejestracja/restauracja/", views.owner_register, name="owner_register"),
     path(
         "logowanie/",
         auth_views.LoginView.as_view(template_name="bookings/login.html"),

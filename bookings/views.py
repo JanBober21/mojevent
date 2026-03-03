@@ -11,7 +11,7 @@ import json
 import math
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
@@ -218,7 +218,23 @@ def booking_create(request, restaurant_pk):
 def booking_detail(request, pk):
     """Szczegóły rezerwacji."""
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
-    return render(request, "bookings/booking_detail.html", {"booking": booking})
+
+    if request.method == "POST" and request.POST.get("action") == "send_message":
+        content = request.POST.get("message", "").strip()
+        if content:
+            BookingMessage.objects.create(
+                booking=booking,
+                sender=request.user,
+                content=content,
+            )
+            messages.success(request, "Wiadomość wysłana.")
+        return redirect("booking_detail", pk=booking.pk)
+
+    chat_messages = booking.chat_messages.select_related("sender").all()
+    return render(request, "bookings/booking_detail.html", {
+        "booking": booking,
+        "chat_messages": chat_messages,
+    })
 
 
 @login_required
@@ -483,16 +499,27 @@ def owner_booking_detail(request, booking_id):
             note_id = request.POST.get("note_id")
             BookingNote.objects.filter(id=note_id, booking=booking).delete()
             messages.success(request, "Notatka została usunięta.")
+        elif action == "send_message":
+            content = request.POST.get("message", "").strip()
+            if content:
+                BookingMessage.objects.create(
+                    booking=booking,
+                    sender=request.user,
+                    content=content,
+                )
+                messages.success(request, "Wiadomość wysłana.")
         
         return redirect("owner_booking_detail", booking_id=booking.id)
 
     notes = booking.crm_notes.all()
+    chat_messages = booking.chat_messages.select_related("sender").all()
     today = timezone.now().date().isoformat()
     
     return render(request, "bookings/owner/booking_detail.html", {
         "restaurant": restaurant,
         "booking": booking,
         "notes": notes,
+        "chat_messages": chat_messages,
         "today": today,
     })
 

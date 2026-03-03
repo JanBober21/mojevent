@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.http import HttpResponse
 import csv
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage
 
 
 # ── Rozszerzony panel użytkowników z kolumną Rola ─────────────────────────────
@@ -129,3 +129,15 @@ class AttractionItemAdmin(admin.ModelAdmin):
     list_filter = ["tag", "is_active", "restaurant"]
     search_fields = ["name", "description"]
     list_editable = ["is_active"]
+
+
+@admin.register(BookingMessage)
+class BookingMessageAdmin(admin.ModelAdmin):
+    list_display = ["booking", "sender", "short_content", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = ["content", "sender__username", "sender__first_name"]
+    readonly_fields = ["created_at"]
+
+    @admin.display(description="Treść")
+    def short_content(self, obj):
+        return obj.content[:80] + "…" if len(obj.content) > 80 else obj.content

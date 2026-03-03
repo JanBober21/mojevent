@@ -354,3 +354,30 @@ class AttractionItem(models.Model):
 
     def __str__(self):
         return f"{self.get_tag_display()}: {self.name} ({self.price} zł)"
+
+
+class BookingMessage(models.Model):
+    """Wiadomość w chacie rezerwacji — komunikacja klient ↔ firma."""
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="chat_messages",
+        verbose_name="Rezerwacja",
+    )
+    sender = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="booking_messages",
+        verbose_name="Nadawca",
+    )
+    content = models.TextField("Treść wiadomości")
+    created_at = models.DateTimeField("Data wysłania", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Wiadomość czatu"
+        verbose_name_plural = "Wiadomości czatu"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.sender.get_full_name() or self.sender.username}: {self.content[:50]}"

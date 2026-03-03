@@ -116,9 +116,12 @@ class Booking(models.Model):
         "Typ uroczystości",
         max_length=20,
         choices=EventType.choices,
+        blank=True,
     )
     event_date = models.DateField("Data uroczystości")
-    guest_count = models.PositiveIntegerField("Liczba gości", validators=[MinValueValidator(1)])
+    guest_count = models.PositiveIntegerField(
+        "Liczba gości", validators=[MinValueValidator(1)], null=True, blank=True,
+    )
     status = models.CharField(
         "Status",
         max_length=20,
@@ -145,14 +148,14 @@ class Booking(models.Model):
         ]
 
     def __str__(self):
-        return (
-            f"{self.get_event_type_display()} — {self.restaurant.name} "
-            f"({self.event_date:%d.%m.%Y})"
-        )
+        label = self.get_event_type_display() if self.event_type else "Rezerwacja"
+        return f"{label} — {self.restaurant.name} ({self.event_date:%d.%m.%Y})"
 
     @property
     def total_cost(self):
-        return self.guest_count * self.restaurant.price_per_person
+        if self.guest_count:
+            return self.guest_count * self.restaurant.price_per_person
+        return 0
 
 
 class Review(models.Model):

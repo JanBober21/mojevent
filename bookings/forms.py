@@ -36,6 +36,13 @@ class BookingForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
+    def __init__(self, *args, firm_type=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.firm_type = firm_type
+        if firm_type == "attraction":
+            del self.fields["event_type"]
+            del self.fields["guest_count"]
+
     def clean_event_date(self):
         date = self.cleaned_data["event_date"]
         if date <= timezone.now().date():
@@ -43,8 +50,8 @@ class BookingForm(forms.ModelForm):
         return date
 
     def clean_guest_count(self):
-        count = self.cleaned_data["guest_count"]
-        if count < 1:
+        count = self.cleaned_data.get("guest_count")
+        if count is not None and count < 1:
             raise forms.ValidationError("Liczba gości musi wynosić co najmniej 1.")
         return count
 

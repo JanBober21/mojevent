@@ -148,20 +148,24 @@ def restaurant_detail(request, pk):
 def booking_create(request, restaurant_pk):
     """Tworzenie nowej rezerwacji."""
     restaurant = get_object_or_404(Restaurant, pk=restaurant_pk, is_active=True)
+    is_attraction = restaurant.firm_type == Restaurant.FirmType.ATTRACTION
 
     if request.method == "POST":
-        form = BookingForm(request.POST)
+        form = BookingForm(request.POST, firm_type=restaurant.firm_type)
         if form.is_valid():
             booking = form.save(commit=False)
             booking.user = request.user
             booking.restaurant = restaurant
 
-            if booking.guest_count > restaurant.max_guests:
+            guest_ok = True
+            if not is_attraction and booking.guest_count and booking.guest_count > restaurant.max_guests:
                 form.add_error(
                     "guest_count",
                     f"Firma przyjmuje maksymalnie {restaurant.max_guests} gości.",
                 )
-            else:
+                guest_ok = False
+
+            if guest_ok:
                 # Sprawdź czy data jest wolna
                 if Booking.objects.filter(
                     restaurant=restaurant,
@@ -173,22 +177,27 @@ def booking_create(request, restaurant_pk):
                     )
                 else:
                     booking.save()
+                    label = booking.get_event_type_display() if booking.event_type else "atrakcję"
                     messages.success(
                         request,
-                        f"Rezerwacja na {booking.get_event_type_display()} została złożona! "
+                        f"Rezerwacja na {label} została złożona! "
                         f"Oczekuj na potwierdzenie.",
                     )
                     return redirect("booking_detail", pk=booking.pk)
     else:
-        form = BookingForm(initial={
-            "first_name": request.user.first_name,
-            "last_name": request.user.last_name,
-            "email": request.user.email,
-        })
+        form = BookingForm(
+            firm_type=restaurant.firm_type,
+            initial={
+                "first_name": request.user.first_name,
+                "last_name": request.user.last_name,
+                "email": request.user.email,
+            },
+        )
 
     return render(request, "bookings/booking_form.html", {
         "form": form,
         "restaurant": restaurant,
+        "is_attraction": is_attraction,
     })
 
 

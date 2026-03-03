@@ -19,10 +19,12 @@
             </div>
             <div class="card-body">
                 <h5 class="mb-3">{{ restaurant.name }} — {{ restaurant.city }}</h5>
+                {% if not is_attraction %}
                 <p class="text-muted">
                     Cena: <strong>{{ restaurant.price_per_person }} zł</strong> / osoba
                     &middot; Maks. gości: <strong>{{ restaurant.max_guests }}</strong>
                 </p>
+                {% endif %}
                 <hr>
 
                 <form method="post" novalidate>
@@ -37,6 +39,7 @@
                     {% endif %}
 
                     <div class="row g-3">
+                        {% if not is_attraction %}
                         <div class="col-md-6">
                             <label class="form-label">Typ uroczystości *</label>
                             {{ form.event_type }}
@@ -44,13 +47,15 @@
                             <div class="text-danger small">{{ form.event_type.errors }}</div>
                             {% endif %}
                         </div>
+                        {% endif %}
                         <div class="col-md-6">
-                            <label class="form-label">Data uroczystości *</label>
+                            <label class="form-label">Data {% if is_attraction %}rezerwacji{% else %}uroczystości{% endif %} *</label>
                             {{ form.event_date }}
                             {% if form.event_date.errors %}
                             <div class="text-danger small">{{ form.event_date.errors }}</div>
                             {% endif %}
                         </div>
+                        {% if not is_attraction %}
                         <div class="col-md-6">
                             <label class="form-label">Liczba gości *</label>
                             {{ form.guest_count }}
@@ -58,6 +63,7 @@
                             <div class="text-danger small">{{ form.guest_count.errors }}</div>
                             {% endif %}
                         </div>
+                        {% endif %}
                     </div>
 
                     <hr>

@@ -312,3 +312,42 @@ class BookingMenuItem(models.Model):
     @property
     def subtotal(self):
         return self.menu_item.price * self.quantity
+
+
+class AttractionItem(models.Model):
+    """Pozycja oferty firmy typu Atrakcje."""
+
+    class Tag(models.TextChoices):
+        SCIANKA = "scianka", "Ścianka"
+        TORT = "tort", "Tort"
+        FOTOGRAF = "fotograf", "Fotograf"
+        WIDEO = "wideo", "Wideofilmowanie"
+        FOTOBUDKA = "fotobudka", "Fotobudka"
+        FONTANNA = "fontanna", "Fontanna czekoladowa"
+
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="attraction_items",
+        verbose_name="Firma",
+    )
+    name = models.CharField("Nazwa", max_length=200)
+    description = models.TextField("Opis", blank=True)
+    image_url = models.URLField("Link do zdjęcia", blank=True)
+    price = models.DecimalField(
+        "Cena (zł)", max_digits=8, decimal_places=2, default=0
+    )
+    tag = models.CharField(
+        "Tag", max_length=20, choices=Tag.choices
+    )
+    is_active = models.BooleanField("Aktywna", default=True)
+    order = models.PositiveIntegerField("Kolejność", default=0)
+    created_at = models.DateTimeField("Utworzono", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Pozycja atrakcji"
+        verbose_name_plural = "Pozycje atrakcji"
+        ordering = ["tag", "order", "name"]
+
+    def __str__(self):
+        return f"{self.get_tag_display()}: {self.name} ({self.price} zł)"

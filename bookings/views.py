@@ -11,7 +11,7 @@ import json
 import math
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
@@ -734,4 +734,85 @@ def booking_menu_select(request, pk):
         "booking": booking,
         "restaurant": restaurant,
         "menu_by_category": menu_by_category,
+    })
+
+
+# ── Oferta atrakcji ─────────────────────────────────────────────────────────
+
+@login_required
+def owner_attractions(request):
+    """Zarządzanie ofertą atrakcji."""
+    try:
+        owner = request.user.restaurant_owner
+    except RestaurantOwner.DoesNotExist:
+        return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        return redirect("owner_restaurant_create")
+
+    if restaurant.firm_type != Restaurant.FirmType.ATTRACTION:
+        messages.error(request, "Ta zakładka jest dostępna tylko dla firm typu Atrakcje.")
+        return redirect("owner_dashboard")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "add":
+            name = request.POST.get("name", "").strip()
+            description = request.POST.get("description", "").strip()
+            image_url = request.POST.get("image_url", "").strip()
+            price = request.POST.get("price", "0")
+            tag = request.POST.get("tag", "")
+            if name and tag:
+                try:
+                    AttractionItem.objects.create(
+                        restaurant=restaurant,
+                        name=name,
+                        description=description,
+                        image_url=image_url,
+                        price=price,
+                        tag=tag,
+                    )
+                    messages.success(request, f"Dodano: {name}")
+                except Exception:
+                    messages.error(request, "Błąd przy dodawaniu pozycji.")
+            else:
+                messages.error(request, "Podaj nazwę i tag.")
+
+        elif action == "edit":
+            item_id = request.POST.get("item_id")
+            item = AttractionItem.objects.filter(id=item_id, restaurant=restaurant).first()
+            if item:
+                item.name = request.POST.get("name", item.name).strip()
+                item.description = request.POST.get("description", "").strip()
+                item.image_url = request.POST.get("image_url", "").strip()
+                item.price = request.POST.get("price", item.price)
+                item.tag = request.POST.get("tag", item.tag)
+                item.is_active = request.POST.get("is_active") == "on"
+                item.save()
+                messages.success(request, f"Zaktualizowano: {item.name}")
+
+        elif action == "delete":
+            item_id = request.POST.get("item_id")
+            AttractionItem.objects.filter(id=item_id, restaurant=restaurant).delete()
+            messages.success(request, "Pozycja usunięta.")
+
+        return redirect("owner_attractions")
+
+    tags = AttractionItem.Tag.choices
+    items_by_tag = []
+    for tag_value, tag_label in tags:
+        items = AttractionItem.objects.filter(restaurant=restaurant, tag=tag_value)
+        items_by_tag.append({
+            "value": tag_value,
+            "label": tag_label,
+            "items": items,
+            "count": items.count(),
+        })
+
+    return render(request, "bookings/owner/attractions.html", {
+        "restaurant": restaurant,
+        "items_by_tag": items_by_tag,
+        "tags": tags,
     })

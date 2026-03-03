@@ -36,6 +36,7 @@ urlpatterns = [
     path("owner/restauracja/dodaj/", views.owner_restaurant_create, name="owner_restaurant_create"),
     path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),
     path("owner/menu/", views.owner_menu, name="owner_menu"),
+    path("owner/atrakcje/", views.owner_attractions, name="owner_attractions"),
 
     # Menu dla klienta
     path("rezerwacje/<int:pk>/menu/", views.booking_menu_select, name="booking_menu_select"),

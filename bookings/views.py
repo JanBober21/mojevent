@@ -6,8 +6,9 @@ from django.contrib import messages
 from django.db.models import Q, Avg, Count
 from django.http import JsonResponse
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import json
+import calendar as cal_module
 
 from .models import Restaurant, Booking, Review, RestaurantOwner
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
@@ -405,7 +406,7 @@ def owner_booking_detail(request, booking_id):
 
 @login_required
 def owner_calendar(request):
-    """Kalendarz rezerwacji restauracji."""
+    """Kalendarz rezerwacji restauracji — widok miesięczny."""
     try:
         owner = request.user.restaurant_owner
     except RestaurantOwner.DoesNotExist:
@@ -415,30 +416,89 @@ def owner_calendar(request):
     restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
-    
-    # Pobierz wszystkie rezerwacje (nie tylko z wybranego miesiąca)
+
+    # Obsługa nawigacji miesięcy
+    today = timezone.now().date()
+    try:
+        year = int(request.GET.get("year", today.year))
+        month = int(request.GET.get("month", today.month))
+        if month < 1 or month > 12:
+            raise ValueError
+    except (ValueError, TypeError):
+        year, month = today.year, today.month
+
+    # Poprzedni / następny miesiąc
+    if month == 1:
+        prev_month, prev_year = 12, year - 1
+    else:
+        prev_month, prev_year = month - 1, year
+    if month == 12:
+        next_month, next_year = 1, year + 1
+    else:
+        next_month, next_year = month + 1, year
+
+    # Polska nazwa miesiąca
+    MONTH_NAMES_PL = [
+        "", "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
+        "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień",
+    ]
+    month_name = MONTH_NAMES_PL[month]
+
+    # Rezerwacje w tym miesiącu
     bookings = Booking.objects.filter(
         restaurant=restaurant,
+        event_date__year=year,
+        event_date__month=month,
     ).exclude(status=Booking.Status.CANCELLED).select_related('user')
-    
-    # JSON data for FullCalendar v6
-    calendar_events = []
-    for booking in bookings:
-        color = {
-            Booking.Status.PENDING: "#ffc107",     # żółty
-            Booking.Status.CONFIRMED: "#28a745",   # zielony  
-            Booking.Status.COMPLETED: "#6c757d",   # szary
-        }.get(booking.status, "#dc3545")  # czerwony default
-        
-        calendar_events.append({
-            "title": f"{booking.get_event_type_display()} ({booking.guest_count} osób)",
-            "date": booking.event_date.strftime("%Y-%m-%d"),
-            "backgroundColor": color,
-            "url": f"/owner/booking/{booking.id}/"
+
+    # Mapuj rezerwacje na dni
+    bookings_by_day = {}
+    for b in bookings:
+        day = b.event_date.day
+        if day not in bookings_by_day:
+            bookings_by_day[day] = []
+        bookings_by_day[day].append({
+            "id": b.id,
+            "type_display": b.get_event_type_display(),
+            "guest_count": b.guest_count,
+            "status": b.status,
+            "client": f"{b.first_name} {b.last_name}",
         })
-    
+
+    # Buduj siatkę kalendarza (poniedziałek = 0)
+    first_weekday, days_in_month = cal_module.monthrange(year, month)
+    calendar_days = []
+
+    # Puste komórki przed pierwszym dniem
+    for _ in range(first_weekday):
+        calendar_days.append({"day": 0, "events": [], "is_today": False})
+
+    # Dni miesiąca
+    for day in range(1, days_in_month + 1):
+        is_today = (year == today.year and month == today.month and day == today.day)
+        calendar_days.append({
+            "day": day,
+            "events": bookings_by_day.get(day, []),
+            "is_today": is_today,
+        })
+
+    # Statystyki miesiąca
+    month_stats = {
+        "total": bookings.count(),
+        "confirmed": bookings.filter(status=Booking.Status.CONFIRMED).count(),
+        "pending": bookings.filter(status=Booking.Status.PENDING).count(),
+        "total_guests": sum(b.guest_count for b in bookings),
+    }
+
     return render(request, "bookings/owner/calendar.html", {
         "restaurant": restaurant,
-        "calendar_events": json.dumps(calendar_events),
-        "bookings": bookings,
+        "calendar_days": calendar_days,
+        "year": year,
+        "month": month,
+        "month_name": month_name,
+        "prev_month": prev_month,
+        "prev_year": prev_year,
+        "next_month": next_month,
+        "next_year": next_year,
+        "month_stats": month_stats,
     })

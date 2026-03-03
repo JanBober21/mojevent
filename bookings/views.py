@@ -357,23 +357,11 @@ def owner_calendar(request):
             "date": booking.event_date.strftime("%Y-%m-%d"),
             "backgroundColor": color,
             "borderColor": color,
-            "extendedProps": {
-                "booking": {
-                    "id": booking.id,
-                    "status": booking.status,
-                    "event_type": booking.event_type,
-                    "first_name": booking.first_name,
-                    "last_name": booking.last_name,
-                    "email": booking.email,
-                    "phone": booking.phone,
-                    "guest_count": booking.guest_count,
-                    "notes": booking.notes or "",
-                    "created_at": booking.created_at.isoformat(),
-                }
-            }
+            "url": f"/owner/booking/{booking.id}/",
         })
     
     return render(request, "bookings/owner/calendar.html", {
         "restaurant": restaurant,
         "calendar_events": json.dumps(calendar_events),
+        "bookings": bookings,
     })

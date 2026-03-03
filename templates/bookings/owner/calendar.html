@@ -3,7 +3,7 @@
 {% block title %}Kalendarz — {{ restaurant.name }} — EventBook{% endblock %}
 
 {% block extra_head %}
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
 <style>
 .fc-event-baptism {
     background-color: #f8f9fa;
@@ -96,7 +96,55 @@
 <!-- Kalendarz -->
 <div class="card shadow-sm">
     <div class="card-body">
+        <!-- Debug info -->
+        <div class="alert alert-info">
+            <strong>Debug:</strong> {{ restaurant.name }} ma 
+            <span id="debug-events-count">-</span> rezerwacji w kalendarzu
+        </div>
         <div id="calendar"></div>
+        
+        <!-- Fallback lista rezerwacji (pokazuje się zawsze) -->
+        <div class="mt-4">
+            <h5>Lista wszystkich rezerwacji:</h5>
+            {% if bookings %}
+                <div class="row">
+                    {% for booking in bookings %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card border-start border-3" style="
+                            {% if booking.status == 'pending' %}border-left-color: #ffc107 !important;
+                            {% elif booking.status == 'confirmed' %}border-left-color: #28a745 !important;
+                            {% elif booking.status == 'completed' %}border-left-color: #6c757d !important;
+                            {% else %}border-left-color: #dc3545 !important;{% endif %}
+                        ">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ booking.get_event_type_display }}</h6>
+                                <p class="card-text">
+                                    <i class="bi bi-calendar"></i> {{ booking.event_date|date:"d.m.Y" }}<br>
+                                    <i class="bi bi-people"></i> {{ booking.guest_count }} osób<br>
+                                    <small class="text-muted">{{ booking.first_name }} {{ booking.last_name }}</small>
+                                </p>
+                                <span class="badge 
+                                    {% if booking.status == 'pending' %}bg-warning text-dark
+                                    {% elif booking.status == 'confirmed' %}bg-success
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ booking.get_status_display }}
+                                </span>
+                                <div class="mt-2">
+                                    <a href="{% url 'owner_booking_detail' booking.id %}" class="btn btn-sm btn-outline-primary">
+                                        Zobacz szczegóły
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Brak rezerwacji do wyświetlenia.
+                </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -121,136 +169,78 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, FullCalendar available:', typeof FullCalendar !== 'undefined');
+    
     var calendarEl = document.getElementById('calendar');
     
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'pl',
-        firstDay: 1,
-        height: 'auto',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,listWeek'
-        },
-        buttonText: {
-            today: 'Dziś',
-            month: 'Miesiąc',
-            week: 'Tydzień',
-            day: 'Dzień',
-            list: 'Lista'
-        },
-        events: {{ calendar_events|safe }},
-        eventClick: function(info) {
-            var event = info.event;
-            var booking = event.extendedProps.booking;
-            
-            // Wypełnij modal
-            document.getElementById('eventModalTitle').textContent = 
-                event.title + ' - ' + event.start.toLocaleDateString('pl-PL');
-            
-            var statusBadge = '';
-            switch(booking.status) {
-                case 'pending':
-                    statusBadge = '<span class="badge bg-warning text-dark">Oczekujące</span>';
-                    break;
-                case 'confirmed':
-                    statusBadge = '<span class="badge bg-success">Zatwierdzone</span>';
-                    break;
-                case 'cancelled':
-                    statusBadge = '<span class="badge bg-danger">Anulowane</span>';
-                    break;
-            }
-            
-            var eventTypeBadge = '';
-            switch(booking.event_type) {
-                case 'baptism':
-                    eventTypeBadge = '<span class="badge bg-light text-dark">Chrzciny</span>';
-                    break;
-                case 'wedding':
-                    eventTypeBadge = '<span class="badge bg-danger">Wesele</span>';
-                    break;
-                case 'communion':
-                    eventTypeBadge = '<span class="badge bg-info">Komunia</span>';
-                    break;
-            }
-            
-            document.getElementById('eventModalBody').innerHTML = `
-                <div class="mb-3">
-                    <strong>Status:</strong> ${statusBadge}
-                </div>
-                <div class="mb-3">
-                    <strong>Typ wydarzenia:</strong> ${eventTypeBadge}
-                </div>
-                <div class="mb-3">
-                    <strong>Klient:</strong> ${booking.first_name} ${booking.last_name}
-                </div>
-                <div class="mb-3">
-                    <strong>Email:</strong> <a href="mailto:${booking.email}">${booking.email}</a>
-                </div>
-                <div class="mb-3">
-                    <strong>Telefon:</strong> <a href="tel:${booking.phone}">${booking.phone}</a>
-                </div>
-                <div class="mb-3">
-                    <strong>Liczba gości:</strong> ${booking.guest_count}
-                </div>
-                ${booking.notes ? 
-                    '<div class="mb-3"><strong>Dodatkowe uwagi:</strong><br><small class="text-muted">' + booking.notes + '</small></div>' : ''
-                }
-                <div class="mb-0">
-                    <strong>Data złożenia:</strong> ${new Date(booking.created_at).toLocaleDateString('pl-PL', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}
-                </div>
-            `;
-            
-            // Ustaw link do szczegółów
-            document.getElementById('eventDetailLink').href = 
-                "{% url 'owner_booking_detail' 0 %}".replace('0', booking.id);
-            
-            // Pokaż modal
-            var modal = new bootstrap.Modal(document.getElementById('eventModal'));
-            modal.show();
-        },
-        eventDidMount: function(info) {
-            var event = info.event;
-            var booking = event.extendedProps.booking;
-            
-            // Dodaj odpowiednie klasy CSS
-            var classNames = ['fc-event-' + booking.event_type];
-            
-            if (booking.status === 'pending') {
-                classNames.push('fc-event-pending');
-            }
-            
-            info.el.className += ' ' + classNames.join(' ');
-            
-            // Dodaj tooltip
-            info.el.setAttribute('title', 
-                event.title + '\n' +
-                'Klient: ' + booking.first_name + ' ' + booking.last_name + '\n' +
-                'Goście: ' + booking.guest_count + '\n' +
-                'Status: ' + (booking.status === 'pending' ? 'Oczekujące' : 
-                              booking.status === 'confirmed' ? 'Zatwierdzone' : 'Anulowane')
-            );
-        },
-        eventClassNames: function(arg) {
-            var booking = arg.event.extendedProps.booking;
-            var classes = ['fc-event-' + booking.event_type];
-            
-            if (booking.status === 'pending') {
-                classes.push('fc-event-pending');
-            }
-            
-            return classes;
-        }
-    });
+    // Debug: sprawdź czy dane docierają
+    try {
+        var eventsData = JSON.parse('{{ calendar_events|escapejs }}');
+        console.log('Calendar events data (parsed):', eventsData);
+        console.log('Number of events:', eventsData.length);
+    } catch (e) {
+        console.error('JSON parse error:', e);
+        console.log('Raw calendar_events:', '{{ calendar_events|escapejs }}');
+        var eventsData = [];
+    }
     
-    calendar.render();
+    // Aktualizuj debug info w HTML
+    document.getElementById('debug-events-count').textContent = eventsData.length;
+    
+    if (typeof FullCalendar === 'undefined') {
+        console.error('FullCalendar not loaded!');
+        calendarEl.innerHTML = '<div class="alert alert-danger">Błąd ładowania kalendarza</div>';
+        return;
+    }
+    
+    try {
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pl',
+            firstDay: 1,
+            height: 'auto',
+            events: eventsData,
+            eventDisplay: 'block',
+            displayEventTime: false
+        });
+        
+        console.log('Created calendar, rendering...');
+        calendar.render();
+        console.log('Calendar rendered!');
+    } catch (error) {
+        console.error('Calendar error:', error);
+        calendarEl.innerHTML = `
+            <div class="alert alert-warning">
+                <h5>Problem z kalendarzem</h5>
+                <p>Błąd: ${error.message}</p>
+                <p>Wydarzenia do wyświetlenia: ${eventsData.length}</p>
+                <details>
+                    <summary>Dane JSON:</summary>
+                    <pre>${JSON.stringify(eventsData, null, 2)}</pre>
+                </details>
+            </div>
+            <div class="mt-4">
+                <h5>Lista rezerwacji:</h5>
+                <div class="row">
+                    ${eventsData.map(event => `
+                        <div class="col-md-4 mb-3">
+                            <div class="card" style="border-left: 4px solid ${event.backgroundColor}">
+                                <div class="card-body">
+                                    <h6 class="card-title">${event.title}</h6>
+                                    <p class="card-text">
+                                        <i class="bi bi-calendar"></i> ${event.date}<br>
+                                        <a href="${event.url || '#'}" class="btn btn-sm btn-outline-primary mt-2">
+                                            Zobacz szczegóły
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
 });
 </script>
 {% endblock %}

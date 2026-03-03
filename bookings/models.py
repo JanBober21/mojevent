@@ -58,7 +58,7 @@ class EventType(models.TextChoices):
     """Typy uroczystości."""
 
     WEDDING = "wedding", "Wesele"
-    CHRISTENING = "christening", "Chrzciny"
+    BAPTISM = "baptism", "Chrzciny"
     COMMUNION = "communion", "Komunia Święta"
 
 

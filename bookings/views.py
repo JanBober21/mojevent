@@ -342,7 +342,7 @@ def owner_calendar(request):
         restaurant=restaurant,
     ).exclude(status=Booking.Status.CANCELLED).select_related('user')
     
-    # JSON data for calendar
+    # JSON data for FullCalendar v6
     calendar_events = []
     for booking in bookings:
         color = {
@@ -352,12 +352,10 @@ def owner_calendar(request):
         }.get(booking.status, "#dc3545")  # czerwony default
         
         calendar_events.append({
-            "id": booking.id,
             "title": f"{booking.get_event_type_display()} ({booking.guest_count} osób)",
             "date": booking.event_date.strftime("%Y-%m-%d"),
             "backgroundColor": color,
-            "borderColor": color,
-            "url": f"/owner/booking/{booking.id}/",
+            "url": f"/owner/booking/{booking.id}/"
         })
     
     return render(request, "bookings/owner/calendar.html", {

@@ -3,7 +3,14 @@
 {% block title %}Kalendarz — {{ restaurant.name }} — EventBook{% endblock %}
 
 {% block extra_head %}
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+<!-- Najprostsze CDN dla FullCalendar -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<style>
+.fc-event {
+    border: none !important;
+    font-size: 12px;
+}
+</style>
 <style>
 .fc-event-baptism {
     background-color: #f8f9fa;
@@ -169,78 +176,30 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, FullCalendar available:', typeof FullCalendar !== 'undefined');
-    
     var calendarEl = document.getElementById('calendar');
+    var eventsData = {{ calendar_events|safe }};
     
-    // Debug: sprawdź czy dane docierają
-    try {
-        var eventsData = JSON.parse('{{ calendar_events|escapejs }}');
-        console.log('Calendar events data (parsed):', eventsData);
-        console.log('Number of events:', eventsData.length);
-    } catch (e) {
-        console.error('JSON parse error:', e);
-        console.log('Raw calendar_events:', '{{ calendar_events|escapejs }}');
-        var eventsData = [];
-    }
-    
-    // Aktualizuj debug info w HTML
+    console.log('FullCalendar v6, events:', eventsData);
     document.getElementById('debug-events-count').textContent = eventsData.length;
     
     if (typeof FullCalendar === 'undefined') {
-        console.error('FullCalendar not loaded!');
-        calendarEl.innerHTML = '<div class="alert alert-danger">Błąd ładowania kalendarza</div>';
+        calendarEl.innerHTML = '<div class="alert alert-danger">FullCalendar nie załadował się</div>';
         return;
     }
     
-    try {
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'pl',
-            firstDay: 1,
-            height: 'auto',
-            events: eventsData,
-            eventDisplay: 'block',
-            displayEventTime: false
-        });
-        
-        console.log('Created calendar, rendering...');
-        calendar.render();
-        console.log('Calendar rendered!');
-    } catch (error) {
-        console.error('Calendar error:', error);
-        calendarEl.innerHTML = `
-            <div class="alert alert-warning">
-                <h5>Problem z kalendarzem</h5>
-                <p>Błąd: ${error.message}</p>
-                <p>Wydarzenia do wyświetlenia: ${eventsData.length}</p>
-                <details>
-                    <summary>Dane JSON:</summary>
-                    <pre>${JSON.stringify(eventsData, null, 2)}</pre>
-                </details>
-            </div>
-            <div class="mt-4">
-                <h5>Lista rezerwacji:</h5>
-                <div class="row">
-                    ${eventsData.map(event => `
-                        <div class="col-md-4 mb-3">
-                            <div class="card" style="border-left: 4px solid ${event.backgroundColor}">
-                                <div class="card-body">
-                                    <h6 class="card-title">${event.title}</h6>
-                                    <p class="card-text">
-                                        <i class="bi bi-calendar"></i> ${event.date}<br>
-                                        <a href="${event.url || '#'}" class="btn btn-sm btn-outline-primary mt-2">
-                                            Zobacz szczegóły
-                                        </a>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        events: eventsData,
+        eventClick: function(info) {
+            if (info.event.url) {
+                window.location.href = info.event.url;
+            }
+        }
+    });
+    
+    calendar.render();
+    console.log('Calendar rendered');
+});
 });
 </script>
 {% endblock %}

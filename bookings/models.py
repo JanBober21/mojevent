@@ -4,8 +4,32 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Restaurant(models.Model):
-    """Restauracja dostępna do rezerwacji na uroczystości."""
+    """Firma — lokal na imprezy, catering lub atrakcje."""
 
+    class FirmType(models.TextChoices):
+        VENUE = "venue", "Imprezy w lokalu"
+        CATERING = "catering", "Catering z dowozem"
+        ATTRACTION = "attraction", "Atrakcje"
+
+    class AttractionType(models.TextChoices):
+        PHOTOGRAPHER = "photographer", "Fotograf / Wideo"
+        PHOTOBOOTH = "photobooth", "Fotobudka"
+        PHOTO_WALL = "photo_wall", "Ścianki do zdjęć"
+        ANIMATIONS = "animations", "Animacje"
+
+    firm_type = models.CharField(
+        "Typ firmy", max_length=20,
+        choices=FirmType.choices, default=FirmType.VENUE,
+    )
+    attraction_type = models.CharField(
+        "Rodzaj atrakcji", max_length=20,
+        choices=AttractionType.choices, blank=True,
+        help_text="Wypełnij tylko dla typu Atrakcje",
+    )
+    delivery_radius_km = models.PositiveIntegerField(
+        "Promień dowozu (km)", default=10,
+        help_text="Wypełnij tylko dla Cateringu",
+    )
     name = models.CharField("Nazwa", max_length=200)
     description = models.TextField("Opis", blank=True)
     address = models.CharField("Adres", max_length=300)
@@ -34,8 +58,8 @@ class Restaurant(models.Model):
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)
 
     class Meta:
-        verbose_name = "Restauracja"
-        verbose_name_plural = "Restauracje"
+        verbose_name = "Firma"
+        verbose_name_plural = "Firmy"
         ordering = ["name"]
 
     def __str__(self):
@@ -60,6 +84,11 @@ class EventType(models.TextChoices):
     WEDDING = "wedding", "Wesele"
     BAPTISM = "baptism", "Chrzciny"
     COMMUNION = "communion", "Komunia Święta"
+    BIRTHDAY = "birthday", "Urodziny"
+    INTEGRATION = "integration", "Impreza integracyjna"
+    CORPORATE_XMAS = "corporate_xmas", "Wigilia firmowa"
+    CATERING = "catering", "Catering"
+    OTHER = "other", "Inne"
 
 
 class Booking(models.Model):
@@ -81,7 +110,7 @@ class Booking(models.Model):
         Restaurant,
         on_delete=models.CASCADE,
         related_name="bookings",
-        verbose_name="Restauracja",
+        verbose_name="Firma",
     )
     event_type = models.CharField(
         "Typ uroczystości",
@@ -139,7 +168,7 @@ class Review(models.Model):
         Restaurant,
         on_delete=models.CASCADE,
         related_name="reviews",
-        verbose_name="Restauracja",
+        verbose_name="Firma",
     )
     rating = models.PositiveIntegerField(
         "Ocena",
@@ -171,7 +200,7 @@ class RestaurantOwner(models.Model):
         Restaurant,
         on_delete=models.CASCADE,
         related_name="owners",
-        verbose_name="Restauracja",
+        verbose_name="Firma",
         null=True,
         blank=True,
     )
@@ -179,8 +208,8 @@ class RestaurantOwner(models.Model):
     created_at = models.DateTimeField("Data dodania", auto_now_add=True)
 
     class Meta:
-        verbose_name = "Właściciel restauracji"
-        verbose_name_plural = "Właściciele restauracji"
+        verbose_name = "Właściciel firmy"
+        verbose_name_plural = "Właściciele firm"
         unique_together = ["user", "restaurant"]
 
     def __str__(self):
@@ -231,7 +260,7 @@ class MenuItem(models.Model):
         Restaurant,
         on_delete=models.CASCADE,
         related_name="menu_items",
-        verbose_name="Restauracja",
+        verbose_name="Firma",
     )
     category = models.CharField(
         "Kategoria", max_length=20, choices=Category.choices

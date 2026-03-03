@@ -1,14 +1,40 @@
 {% extends "base.html" %}
 
-{% block title %}Restauracje — EventBook{% endblock %}
+{% block title %}Firmy — EventBook{% endblock %}
 
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-shop"></i> Restauracje</h1>
+<h1 class="mb-4"><i class="bi bi-shop"></i> Firmy</h1>
+
+<!-- Zakładki typów firm -->
+<ul class="nav nav-pills mb-4">
+    <li class="nav-item">
+        <a class="nav-link {% if not firm_type_filter %}active{% endif %}" href="{% url 'restaurant_list' %}">Wszystkie</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if firm_type_filter == 'venue' %}active{% endif %}" href="{% url 'restaurant_list' %}?firm_type=venue">
+            <i class="bi bi-building"></i> Imprezy w lokalu
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if firm_type_filter == 'catering' %}active{% endif %}" href="{% url 'restaurant_list' %}?firm_type=catering">
+            <i class="bi bi-truck"></i> Catering z dowozem
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if firm_type_filter == 'attraction' %}active{% endif %}" href="{% url 'restaurant_list' %}?firm_type=attraction">
+            <i class="bi bi-camera-fill"></i> Atrakcje
+        </a>
+    </li>
+</ul>
 
 <!-- Filtrowanie -->
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <form method="get" class="row g-3 align-items-end">
+        <form method="get" class="row g-3 align-items-end" id="searchForm">
+            {% if firm_type_filter %}
+            <input type="hidden" name="firm_type" value="{{ firm_type_filter }}">
+            {% endif %}
+
             <div class="col-md-3">
                 <label class="form-label">Miasto</label>
                 {{ form.city }}
@@ -40,11 +66,31 @@
                     <i class="bi bi-search"></i> Szukaj
                 </button>
             </div>
+
+            {% if firm_type_filter == 'catering' %}
+            <div class="col-12 mt-3">
+                <div class="alert alert-info d-flex align-items-center gap-3 mb-0 flex-wrap">
+                    <div>
+                        <i class="bi bi-geo-alt-fill fs-4"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <strong>Filtruj po lokalizacji dowozu</strong><br>
+                        <small>Udostępnij swoją lokalizację, aby znaleźć catering z dowozem w Twojej okolicy.</small>
+                    </div>
+                    <button type="button" class="btn btn-info" id="getLocationBtn">
+                        <i class="bi bi-crosshair"></i> Użyj mojej lokalizacji
+                    </button>
+                    {{ form.user_lat }}
+                    {{ form.user_lng }}
+                    <span id="locationStatus" class="small text-muted"></span>
+                </div>
+            </div>
+            {% endif %}
         </form>
     </div>
 </div>
 
-<!-- Lista restauracji -->
+<!-- Lista firm -->
 {% if restaurants %}
 <div class="row g-4">
     {% for restaurant in restaurants %}
@@ -60,10 +106,32 @@
             </div>
             {% endif %}
             <div class="card-body">
-                <h5 class="card-title">{{ restaurant.name }}</h5>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">{{ restaurant.name }}</h5>
+                    <span class="badge
+                        {% if restaurant.firm_type == 'venue' %}bg-danger
+                        {% elif restaurant.firm_type == 'catering' %}bg-info
+                        {% else %}bg-success{% endif %}">
+                        {{ restaurant.get_firm_type_display }}
+                    </span>
+                </div>
                 <p class="text-muted mb-1">
                     <i class="bi bi-geo-alt"></i> {{ restaurant.address }}, {{ restaurant.city }}
                 </p>
+                {% if restaurant.firm_type == 'attraction' and restaurant.attraction_type %}
+                <p class="mb-1">
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-star"></i> {{ restaurant.get_attraction_type_display }}
+                    </span>
+                </p>
+                {% endif %}
+                {% if restaurant.firm_type == 'catering' %}
+                <p class="mb-1">
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-truck"></i> Dowóz do {{ restaurant.delivery_radius_km }} km
+                    </span>
+                </p>
+                {% endif %}
                 {% if restaurant.avg_rating %}
                 <p class="mb-1">
                     <span class="badge bg-warning text-dark">
@@ -95,8 +163,39 @@
 {% else %}
 <div class="text-center py-5">
     <i class="bi bi-search fs-1 text-muted"></i>
-    <h4 class="text-muted mt-3">Nie znaleziono restauracji</h4>
+    <h4 class="text-muted mt-3">Nie znaleziono firm</h4>
     <p class="text-muted">Spróbuj zmienić kryteria wyszukiwania.</p>
 </div>
+{% endif %}
+
+{% if firm_type_filter == 'catering' %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('getLocationBtn');
+    const status = document.getElementById('locationStatus');
+    const latInput = document.getElementById('user_lat');
+    const lngInput = document.getElementById('user_lng');
+
+    if (btn) {
+        btn.addEventListener('click', function() {
+            if (!navigator.geolocation) {
+                status.textContent = 'Geolokalizacja nie jest obsługiwana.';
+                return;
+            }
+            status.textContent = 'Pobieranie lokalizacji...';
+            btn.disabled = true;
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                latInput.value = pos.coords.latitude.toFixed(6);
+                lngInput.value = pos.coords.longitude.toFixed(6);
+                status.textContent = 'Lokalizacja pobrana!';
+                document.getElementById('searchForm').submit();
+            }, function(err) {
+                status.textContent = 'Nie udało się pobrać lokalizacji.';
+                btn.disabled = false;
+            });
+        });
+    }
+});
+</script>
 {% endif %}
 {% endblock %}

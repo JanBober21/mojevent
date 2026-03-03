@@ -5,7 +5,7 @@
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'restaurant_list' %}">Restauracje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'restaurant_list' %}">Firmy</a></li>
         <li class="breadcrumb-item"><a href="{% url 'restaurant_detail' restaurant.pk %}">{{ restaurant.name }}</a></li>
         <li class="breadcrumb-item active">Rezerwacja</li>
     </ol>
@@ -117,7 +117,7 @@
                 <ol class="text-muted">
                     <li class="mb-2">Wypełnij formularz rezerwacji</li>
                     <li class="mb-2">Otrzymasz potwierdzenie e-mailem</li>
-                    <li class="mb-2">Restauracja potwierdzi rezerwację</li>
+                    <li class="mb-2">Firma potwierdzi rezerwację</li>
                     <li class="mb-2">Ciesz się uroczystością!</li>
                 </ol>
             </div>

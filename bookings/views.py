@@ -8,21 +8,33 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import datetime, timedelta, date
 import json
+import math
 import calendar as cal_module
 
 from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Oblicz odległość w km między dwoma punktami GPS (Haversine)."""
+    R = 6371  # promień Ziemi w km
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (math.sin(d_lat / 2) ** 2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+         math.sin(d_lon / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
 # ── Strona główna ──────────────────────────────────────────────────────────────
 
 def home(request):
-    """Strona główna z wyróżnionymi restauracjami."""
+    """Strona główna z wyróżnionymi firmami."""
     featured = Restaurant.objects.filter(is_active=True).annotate(
         avg_rating=Avg("reviews__rating")
     ).order_by("-avg_rating")[:6]
 
-    # Build map markers JSON for restaurants with GPS coordinates
+    # Build map markers JSON for firms with GPS coordinates
     all_restaurants = Restaurant.objects.filter(is_active=True)
     markers = []
     for r in all_restaurants:
@@ -35,6 +47,7 @@ def home(request):
                 "price": str(r.price_per_person),
                 "max_guests": r.max_guests,
                 "pk": r.pk,
+                "firm_type": r.get_firm_type_display(),
             })
 
     return render(request, "bookings/home.html", {
@@ -46,18 +59,26 @@ def home(request):
 # ── Restauracje ────────────────────────────────────────────────────────────────
 
 def restaurant_list(request):
-    """Lista restauracji z filtrowaniem."""
+    """Lista firm z filtrowaniem."""
     form = RestaurantSearchForm(request.GET or None)
     qs = Restaurant.objects.filter(is_active=True).annotate(avg_rating=Avg("reviews__rating"))
 
+    firm_type_filter = request.GET.get("firm_type", "")
+
     if form.is_valid():
+        firm_type = form.cleaned_data.get("firm_type")
         city = form.cleaned_data.get("city")
         min_guests = form.cleaned_data.get("min_guests")
         max_price = form.cleaned_data.get("max_price")
         has_parking = form.cleaned_data.get("has_parking")
         has_garden = form.cleaned_data.get("has_garden")
         has_dance_floor = form.cleaned_data.get("has_dance_floor")
+        user_lat = form.cleaned_data.get("user_lat")
+        user_lng = form.cleaned_data.get("user_lng")
 
+        if firm_type:
+            qs = qs.filter(firm_type=firm_type)
+            firm_type_filter = firm_type
         if city:
             qs = qs.filter(city__icontains=city)
         if min_guests:
@@ -71,9 +92,23 @@ def restaurant_list(request):
         if has_dance_floor:
             qs = qs.filter(has_dance_floor=True)
 
+        # Filtrowanie cateringów po promieniu dowozu
+        if firm_type == "catering" and user_lat and user_lng:
+            nearby_ids = []
+            for r in qs:
+                if r.latitude and r.longitude:
+                    dist = _haversine_km(
+                        float(user_lat), float(user_lng),
+                        float(r.latitude), float(r.longitude),
+                    )
+                    if dist <= r.delivery_radius_km:
+                        nearby_ids.append(r.pk)
+            qs = qs.filter(pk__in=nearby_ids)
+
     return render(request, "bookings/restaurant_list.html", {
         "restaurants": qs,
         "form": form,
+        "firm_type_filter": firm_type_filter,
     })
 
 
@@ -124,7 +159,7 @@ def booking_create(request, restaurant_pk):
             if booking.guest_count > restaurant.max_guests:
                 form.add_error(
                     "guest_count",
-                    f"Restauracja przyjmuje maksymalnie {restaurant.max_guests} gości.",
+                    f"Firma przyjmuje maksymalnie {restaurant.max_guests} gości.",
                 )
             else:
                 # Sprawdź czy data jest wolna
@@ -134,7 +169,7 @@ def booking_create(request, restaurant_pk):
                 ).exclude(status=Booking.Status.CANCELLED).exists():
                     form.add_error(
                         "event_date",
-                        "Ta data jest już zarezerwowana w tej restauracji.",
+                        "Ta data jest już zarezerwowana w tej firmie.",
                     )
                 else:
                     booking.save()
@@ -194,7 +229,7 @@ def review_create(request, restaurant_pk):
     restaurant = get_object_or_404(Restaurant, pk=restaurant_pk)
 
     if Review.objects.filter(user=request.user, restaurant=restaurant).exists():
-        messages.warning(request, "Już dodałeś opinię o tej restauracji.")
+        messages.warning(request, "Już dodałeś opinię o tej firmie.")
         return redirect("restaurant_detail", pk=restaurant.pk)
 
     if request.method == "POST":
@@ -239,7 +274,7 @@ def owner_register(request):
             user = form.save()
             RestaurantOwner.objects.create(user=user, restaurant=None)
             login(request, user)
-            messages.success(request, f"Witaj, {user.first_name}! Konto właściciela zostało utworzone. Dodaj teraz swoją restaurację.")
+            messages.success(request, f"Witaj, {user.first_name}! Konto właściciela zostało utworzone. Dodaj teraz swoją firmę.")
             return redirect("owner_restaurant_create")
     else:
         form = OwnerRegisterForm()
@@ -252,11 +287,11 @@ def owner_restaurant_create(request):
     try:
         owner = request.user.restaurant_owner
     except RestaurantOwner.DoesNotExist:
-        messages.error(request, "Nie masz konta właściciela restauracji.")
+        messages.error(request, "Nie masz konta właściciela firmy.")
         return redirect("home")
 
     if owner.restaurant:
-        messages.info(request, "Masz już przypisaną restaurację. Możesz ją edytować.")
+        messages.info(request, "Masz już przypąsaną firmę. Możesz ją edytować.")
         return redirect("owner_restaurant_edit")
 
     if request.method == "POST":
@@ -265,7 +300,7 @@ def owner_restaurant_create(request):
             restaurant = form.save()
             owner.restaurant = restaurant
             owner.save()
-            messages.success(request, f"Restauracja '{restaurant.name}' została dodana!")
+            messages.success(request, f"Firma '{restaurant.name}' została dodana!")
             return redirect("owner_dashboard")
     else:
         form = RestaurantForm()
@@ -279,18 +314,18 @@ def owner_restaurant_edit(request):
         owner = request.user.restaurant_owner
         restaurant = owner.restaurant
     except RestaurantOwner.DoesNotExist:
-        messages.error(request, "Nie masz konta właściciela restauracji.")
+        messages.error(request, "Nie masz konta właściciela firmy.")
         return redirect("home")
 
     if not restaurant:
-        messages.info(request, "Najpierw dodaj swoją restaurację.")
+        messages.info(request, "Najpierw dodaj swoją firmę.")
         return redirect("owner_restaurant_create")
 
     if request.method == "POST":
         form = RestaurantForm(request.POST, instance=restaurant)
         if form.is_valid():
             form.save()
-            messages.success(request, "Dane restauracji zostały zaktualizowane.")
+            messages.success(request, "Dane firmy zostały zaktualizowane.")
             return redirect("owner_dashboard")
     else:
         form = RestaurantForm(instance=restaurant)
@@ -301,16 +336,16 @@ def owner_restaurant_edit(request):
 
 @login_required
 def owner_dashboard(request):
-    """Panel główny właściciela restauracji."""
+    """Panel główny właściciela firmy."""
     try:
         owner = request.user.restaurant_owner
     except RestaurantOwner.DoesNotExist:
-        messages.error(request, "Nie masz konta właściciela restauracji.")
+        messages.error(request, "Nie masz konta właściciela firmy.")
         return redirect("home")
 
     restaurant = owner.restaurant
     if not restaurant:
-        messages.info(request, "Najpierw dodaj swoją restaurację.")
+        messages.info(request, "Najpierw dodaj swoją firmę.")
         return redirect("owner_restaurant_create")
     
     today = timezone.now().date()
@@ -446,7 +481,7 @@ def owner_calendar(request):
     try:
         owner = request.user.restaurant_owner
     except RestaurantOwner.DoesNotExist:
-        messages.error(request, "Nie masz uprawnień do zarządzania restauracją.")
+        messages.error(request, "Nie masz uprawnień do zarządzania firmą.")
         return redirect("home")
 
     restaurant = owner.restaurant
@@ -627,7 +662,7 @@ def booking_menu_select(request, pk):
     menu_items = MenuItem.objects.filter(restaurant=restaurant, is_visible=True)
 
     if not menu_items.exists():
-        messages.info(request, "Ta restauracja nie udostępniła jeszcze menu.")
+        messages.info(request, "Ta firma nie udostępniła jeszcze menu.")
         return redirect("booking_detail", pk=pk)
 
     if request.method == "POST":

@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .models import Booking, Review, Restaurant, BookingNote
+from .models import Booking, Review, Restaurant, BookingNote, EventType
 
 
 class BookingForm(forms.ModelForm):
@@ -96,14 +96,16 @@ class UserRegisterForm(UserCreationForm):
 
 
 class RestaurantSearchForm(forms.Form):
-    """Formularz wyszukiwania restauracji."""
+    """Formularz wyszukiwania firm."""
 
-    EVENT_CHOICES = [("", "Wszystkie")] + [
-        ("wedding", "Wesele"),
-        ("christening", "Chrzciny"),
-        ("communion", "Komunia Święta"),
-    ]
+    FIRM_TYPE_CHOICES = [("", "Wszystkie")] + list(Restaurant.FirmType.choices)
 
+    firm_type = forms.ChoiceField(
+        label="Typ firmy",
+        choices=FIRM_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
     city = forms.CharField(
         label="Miasto",
         required=False,
@@ -135,6 +137,15 @@ class RestaurantSearchForm(forms.Form):
         label="Parkiet",
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+    # Pola lokalizacji dla cateringu (filtrowanie po promieniu)
+    user_lat = forms.DecimalField(
+        required=False,
+        widget=forms.HiddenInput(attrs={"id": "user_lat"}),
+    )
+    user_lng = forms.DecimalField(
+        required=False,
+        widget=forms.HiddenInput(attrs={"id": "user_lng"}),
     )
 
 
@@ -168,11 +179,12 @@ class OwnerRegisterForm(UserCreationForm):
 
 
 class RestaurantForm(forms.ModelForm):
-    """Formularz dodawania/edycji restauracji."""
+    """Formularz dodawania/edycji firmy."""
 
     class Meta:
         model = Restaurant
         fields = [
+            "firm_type", "attraction_type", "delivery_radius_km",
             "name", "description", "address", "city",
             "phone", "email", "website", "image_url",
             "max_guests", "price_per_person",
@@ -180,6 +192,9 @@ class RestaurantForm(forms.ModelForm):
             "latitude", "longitude",
         ]
         widgets = {
+            "firm_type": forms.Select(attrs={"class": "form-select", "id": "id_firm_type"}),
+            "attraction_type": forms.Select(attrs={"class": "form-select"}),
+            "delivery_radius_km": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
             "address": forms.TextInput(attrs={"class": "form-control"}),

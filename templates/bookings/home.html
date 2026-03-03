@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}EventBook — Rezerwacja restauracji na uroczystości{% endblock %}
+{% block title %}EventBook — Organizacja uroczystości, catering i atrakcje{% endblock %}
 
 {% block content %}
 <!-- Hero -->
 <div class="hero-section text-center text-white rounded-4 p-5 mb-5">
-    <h1 class="display-4 fw-bold">Zarezerwuj idealną restaurację</h1>
-    <p class="lead mb-4">Chrzciny, wesela, komunie — znajdź i zarezerwuj wymarzony lokal na wyjątkową uroczystość</p>
+    <h1 class="display-4 fw-bold">Zorganizuj wymarzoną uroczystość</h1>
+    <p class="lead mb-4">Lokale na imprezy, catering z dowozem i atrakcje — wszystko w jednym miejscu</p>
     <div class="d-flex justify-content-center gap-3">
         <a href="{% url 'restaurant_list' %}" class="btn btn-light btn-lg">
-            <i class="bi bi-search"></i> Przeglądaj restauracje
+            <i class="bi bi-search"></i> Przeglądaj oferty
         </a>
         {% if not user.is_authenticated %}
         <a href="{% url 'register' %}" class="btn btn-outline-light btn-lg">
@@ -18,12 +18,12 @@
         {% endif %}
     </div>
     
-    <!-- Sekcja logowania dla właścicieli restauracji -->
+    <!-- Sekcja logowania dla właścicieli -->
     {% if not user.is_authenticated %}
     <div class="mt-4 pt-4 border-top border-light border-opacity-25">
-        <p class="mb-3">Masz restaurację? <strong>Zaloguj się jako właściciel</strong></p>
+        <p class="mb-3">Prowadzisz firmę? <strong>Zaloguj się jako właściciel</strong></p>
         <a href="{% url 'login' %}?next={% url 'owner_dashboard' %}" class="btn btn-outline-light">
-            <i class="bi bi-shop"></i> Panel restauracji
+            <i class="bi bi-shop"></i> Panel firmy
         </a>
     </div>
     {% elif user.restaurant_owner %}
@@ -36,22 +36,22 @@
     {% endif %}
 </div>
 
-<!-- Typy uroczystości -->
-<h2 class="text-center mb-4">Organizujesz uroczystość?</h2>
+<!-- 3 główne kategorie -->
+<h2 class="text-center mb-4">Czego szukasz?</h2>
 <div class="row g-4 mb-5">
     <div class="col-md-4">
         <div class="card h-100 border-0 shadow-sm text-center event-card">
             <div class="card-body p-4">
                 <div class="event-icon bg-danger-subtle text-danger rounded-circle mx-auto mb-3">
-                    <i class="bi bi-heart-fill fs-1"></i>
+                    <i class="bi bi-building fs-1"></i>
                 </div>
-                <h4 class="card-title">Wesele</h4>
+                <h4 class="card-title">Imprezy w lokalu</h4>
                 <p class="card-text text-muted">
-                    Znajdź restaurację z parkietem tanecznym, noclegi dla gości
-                    i wyjątkową atmosferą na Twój wielki dzień.
+                    Wesela, chrzciny, komunie, urodziny, imprezy integracyjne,
+                    wigilie firmowe — znajdź idealny lokal.
                 </p>
-                <a href="{% url 'restaurant_list' %}?has_dance_floor=on" class="btn btn-outline-danger">
-                    Szukaj lokalu
+                <a href="{% url 'restaurant_list' %}?firm_type=venue" class="btn btn-outline-danger">
+                    <i class="bi bi-search"></i> Szukaj
                 </a>
             </div>
         </div>
@@ -60,15 +60,15 @@
         <div class="card h-100 border-0 shadow-sm text-center event-card">
             <div class="card-body p-4">
                 <div class="event-icon bg-info-subtle text-info rounded-circle mx-auto mb-3">
-                    <i class="bi bi-droplet-fill fs-1"></i>
+                    <i class="bi bi-truck fs-1"></i>
                 </div>
-                <h4 class="card-title">Chrzciny</h4>
+                <h4 class="card-title">Catering z dowozem</h4>
                 <p class="card-text text-muted">
-                    Kameralna uroczystość w pięknym otoczeniu.
-                    Idealne lokale na rodzinne spotkanie po chrzcie świętym.
+                    Zamów catering na każdą okazję.
+                    Podaj swój adres i znajdź catering z dowozem w promieniu 10 km.
                 </p>
-                <a href="{% url 'restaurant_list' %}" class="btn btn-outline-info">
-                    Szukaj lokalu
+                <a href="{% url 'restaurant_list' %}?firm_type=catering" class="btn btn-outline-info">
+                    <i class="bi bi-search"></i> Szukaj
                 </a>
             </div>
         </div>
@@ -77,28 +77,28 @@
         <div class="card h-100 border-0 shadow-sm text-center event-card">
             <div class="card-body p-4">
                 <div class="event-icon bg-success-subtle text-success rounded-circle mx-auto mb-3">
-                    <i class="bi bi-book-fill fs-1"></i>
+                    <i class="bi bi-camera-fill fs-1"></i>
                 </div>
-                <h4 class="card-title">Komunia Święta</h4>
+                <h4 class="card-title">Atrakcje</h4>
                 <p class="card-text text-muted">
-                    Przyjęcie komunijne w restauracji z ogrodem —
-                    stwórz niezapomniane wspomnienia dla dziecka.
+                    Fotograf, fotobudka, ścianki do zdjęć, animacje —
+                    dodaj atrakcje do swojej uroczystości.
                 </p>
-                <a href="{% url 'restaurant_list' %}?has_garden=on" class="btn btn-outline-success">
-                    Szukaj lokalu
+                <a href="{% url 'restaurant_list' %}?firm_type=attraction" class="btn btn-outline-success">
+                    <i class="bi bi-search"></i> Szukaj
                 </a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Mapa restauracji -->
-<h2 class="text-center mb-4"><i class="bi bi-geo-alt"></i> Nasze restauracje na mapie</h2>
+<!-- Mapa firm -->
+<h2 class="text-center mb-4"><i class="bi bi-geo-alt"></i> Nasze firmy na mapie</h2>
 <div id="map" class="rounded-4 shadow-sm mb-5" style="height: 450px; z-index: 0;"></div>
 
-<!-- Wyróżnione restauracje -->
+<!-- Wyróżnione firmy -->
 {% if featured_restaurants %}
-<h2 class="text-center mb-4">Polecane restauracje</h2>
+<h2 class="text-center mb-4">Polecane firmy</h2>
 <div class="row g-4">
     {% for restaurant in featured_restaurants %}
     <div class="col-md-4">
@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const marker = L.marker([m.lat, m.lng]).addTo(map);
         marker.bindPopup(
             '<strong>' + m.name + '</strong><br>' +
+            '<span class="badge bg-primary">' + m.firm_type + '</span><br>' +
             '<i class="bi bi-geo-alt"></i> ' + m.city + '<br>' +
             m.price + ' zł/os. &middot; do ' + m.max_guests + ' gości<br>' +
             '<a href="/restauracje/' + m.pk + '/" class="btn btn-sm btn-primary mt-2">Zobacz</a>'

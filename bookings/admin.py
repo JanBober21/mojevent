@@ -22,20 +22,20 @@ class UserAdmin(BaseUserAdmin):
         if obj.is_superuser:
             return format_html('<span style="color:#dc3545;font-weight:bold;">⛑ Administracja</span>')
         if hasattr(obj, "restaurant_owner"):
-            return format_html('<span style="color:#198754;font-weight:bold;">🏪 Restauracja</span>')
+            return format_html('<span style="color:#198754;font-weight:bold;">🏪 Firma</span>')
         return format_html('<span style="color:#0d6efd;">👤 Użytkownik</span>')
 
 
 @admin.register(Restaurant)
 class RestaurantAdmin(admin.ModelAdmin):
     list_display = [
-        "name", "city", "max_guests", "price_per_person",
+        "name", "firm_type", "city", "max_guests", "price_per_person",
         "has_parking", "has_garden", "has_dance_floor", "is_active",
     ]
-    list_filter = ["city", "is_active", "has_parking", "has_garden", "has_dance_floor"]
+    list_filter = ["firm_type", "city", "is_active", "has_parking", "has_garden", "has_dance_floor"]
     search_fields = ["name", "city", "address"]
     fieldsets = (
-        (None, {"fields": ("name", "description", "is_active")}),
+        (None, {"fields": ("firm_type", "attraction_type", "delivery_radius_km", "name", "description", "is_active")}),
         ("Adres i kontakt", {"fields": ("address", "city", "phone", "email", "website")}),
         ("Zdjęcia", {"fields": (("image", "image_url"),)}),
         ("Lokalizacja GPS", {"fields": (("latitude", "longitude"),)}),
@@ -48,17 +48,17 @@ class RestaurantAdmin(admin.ModelAdmin):
     @admin.action(description="Eksportuj zaznaczone do CSV")
     def export_csv(self, request, queryset):
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="restauracje.csv"'
+        response["Content-Disposition"] = 'attachment; filename="firmy.csv"'
         response.write("\ufeff")  # BOM for Excel UTF-8
         writer = csv.writer(response, delimiter=";")
         writer.writerow([
-            "Nazwa", "Miasto", "Adres", "Telefon", "Email", "Strona www",
+            "Typ firmy", "Nazwa", "Miasto", "Adres", "Telefon", "Email", "Strona www",
             "Maks. go\u015bci", "Cena/os.", "Parking", "Ogr\u00f3d", "Parkiet",
             "Noclegi", "Aktywna", "Szeroko\u015b\u0107 GPS", "D\u0142ugo\u015b\u0107 GPS",
         ])
         for r in queryset:
             writer.writerow([
-                r.name, r.city, r.address, r.phone, r.email, r.website or "",
+                r.get_firm_type_display(), r.name, r.city, r.address, r.phone, r.email, r.website or "",
                 r.max_guests, r.price_per_person,
                 "Tak" if r.has_parking else "Nie",
                 "Tak" if r.has_garden else "Nie",
@@ -67,7 +67,7 @@ class RestaurantAdmin(admin.ModelAdmin):
                 "Tak" if r.is_active else "Nie",
                 r.latitude or "", r.longitude or "",
             ])
-        self.message_user(request, f"Wyeksportowano {queryset.count()} restauracji do CSV.")
+        self.message_user(request, f"Wyeksportowano {queryset.count()} firm do CSV.")
         return response
 
 @admin.register(Booking)

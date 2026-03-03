@@ -17,6 +17,7 @@ Właściciele firm mogą zarządzać rezerwacjami, klientami, menu, ofertą atra
 | Autoryzacja   | django-allauth (Google OAuth)              |
 | Hosting       | Heroku (Gunicorn + WhiteNoise)             |
 | Repo          | github.com/JanBober21/mojevent             |
+| API           | Django REST Framework + drf-spectacular     |
 
 ---
 
@@ -30,6 +31,56 @@ Właściciele firm mogą zarządzać rezerwacjami, klientami, menu, ofertą atra
 - **Google Calendar** — link do dodania wydarzenia
 - **Opinie** — oceny 1–5 z komentarzem
 - **Admin** — panel Django z CSV export
+- **REST API** — pełne API z dokumentacją Swagger UI i ReDoc
+
+---
+
+## REST API
+
+Dostępne pod prefixem `/api/`. Dokumentacja interaktywna:
+
+- **Swagger UI:** `/api/docs/`
+- **ReDoc:** `/api/redoc/`
+- **OpenAPI schema (JSON):** `/api/schema/`
+
+### Endpointy API
+
+| Metoda | URL                                        | Opis                         |
+|--------|--------------------------------------------|------------------------------|
+| POST   | `/api/auth/login/`                         | Logowanie (sesja)            |
+| POST   | `/api/auth/logout/`                        | Wylogowanie                  |
+| GET    | `/api/auth/me/`                            | Dane zalogowanego            |
+| GET    | `/api/firmy/`                              | Lista firm (filtr/szukaj)    |
+| GET    | `/api/firmy/{id}/`                         | Szczegóły firmy              |
+| GET    | `/api/firmy/{id}/menu/`                    | Menu firmy                   |
+| POST   | `/api/firmy/{id}/menu/`                    | Dodaj pozycję menu           |
+| PATCH  | `/api/firmy/{id}/menu/{id}/`               | Edytuj pozycję menu          |
+| DELETE | `/api/firmy/{id}/menu/{id}/`               | Usuń pozycję menu            |
+| GET    | `/api/firmy/{id}/atrakcje/`                | Oferta atrakcji              |
+| GET    | `/api/firmy/{id}/opinie/`                  | Opinie o firmie              |
+| POST   | `/api/firmy/{id}/opinie/`                  | Dodaj opinię                 |
+| GET    | `/api/rezerwacje/`                         | Moje rezerwacje              |
+| POST   | `/api/rezerwacje/`                         | Nowa rezerwacja              |
+| GET    | `/api/rezerwacje/{id}/`                    | Szczegóły rezerwacji         |
+| PATCH  | `/api/rezerwacje/{id}/`                    | Edytuj rezerwację            |
+| POST   | `/api/rezerwacje/{id}/potwierdz/`          | Zatwierdź (właściciel)       |
+| POST   | `/api/rezerwacje/{id}/anuluj/`             | Anuluj rezerwację            |
+| POST   | `/api/rezerwacje/{id}/zamknij-deal/`       | Zamknij deal                 |
+| POST   | `/api/rezerwacje/{id}/otworz-deal/`        | Otwórz deal ponownie         |
+| GET    | `/api/rezerwacje/{id}/czat/`               | Wiadomości czatu             |
+| POST   | `/api/rezerwacje/{id}/czat/`               | Wyślij wiadomość             |
+| GET    | `/api/rezerwacje/{id}/menu/`               | Wybory menu rezerwacji       |
+| POST   | `/api/rezerwacje/{id}/menu/`               | Dodaj pozycję do wyboru      |
+| DELETE | `/api/rezerwacje/{id}/menu/{id}/`          | Usuń pozycję z wyboru        |
+| GET    | `/api/rezerwacje/{id}/notatki/`            | Notatki CRM                  |
+| POST   | `/api/rezerwacje/{id}/notatki/`            | Dodaj notatkę CRM            |
+
+### Filtrowanie i wyszukiwanie
+
+- **Firmy:** `?firm_type=venue`, `?city=Warszawa`, `?search=nazwa`
+- **Rezerwacje:** `?status=confirmed`, `?event_type=wedding`
+- **Paginacja:** `?page=2` (domyślnie 20 wyników na stronę)
+
 
 ---
 

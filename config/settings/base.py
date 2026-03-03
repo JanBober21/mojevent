@@ -29,6 +29,9 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "rest_framework",
+    "drf_spectacular",
+    "django_filters",
     # Local apps
     "bookings.apps.BookingsConfig",
 ]
@@ -98,6 +101,41 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Django REST Framework
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "MojEvent API",
+    "DESCRIPTION": "REST API dla platformy rezerwacji eventowych MojEvent.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "LANGUAGE": "pl",
+    "TAGS": [
+        {"name": "Firmy", "description": "Wyszukiwanie i szczegóły firm"},
+        {"name": "Rezerwacje", "description": "Tworzenie i zarządzanie rezerwacjami"},
+        {"name": "Menu", "description": "Pozycje menu i wybory klienta"},
+        {"name": "Atrakcje", "description": "Oferta firm typu Atrakcje"},
+        {"name": "Opinie", "description": "Oceny i komentarze"},
+        {"name": "Czat", "description": "Wiadomości w rezerwacji"},
+        {"name": "Auth", "description": "Logowanie i dane użytkownika"},
+    ],
+}
 
 # Auth URLs
 LOGIN_URL = "login"

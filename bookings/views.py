@@ -1,13 +1,15 @@
-import json
-
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, Count
+from django.http import JsonResponse
+from django.utils import timezone
+from datetime import datetime, timedelta
+import json
 
-from .models import Restaurant, Booking, Review
+from .models import Restaurant, Booking, Review, RestaurantOwner
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm
 
 
@@ -216,3 +218,162 @@ def register(request):
     else:
         form = UserRegisterForm()
     return render(request, "bookings/register.html", {"form": form})
+
+
+# ── Panel właścicieli restauracji ─────────────────────────────────────────────
+
+@login_required
+def owner_dashboard(request):
+    """Panel główny właściciela restauracji."""
+    try:
+        owner = request.user.restaurant_owner
+        restaurant = owner.restaurant
+    except RestaurantOwner.DoesNotExist:
+        messages.error(request, "Nie masz przypisanej restauracji. Skontaktuj się z administratorem.")
+        return redirect("home")
+    
+    today = timezone.now().date()
+    
+    # Statystyki
+    stats = {
+        "total_bookings": Booking.objects.filter(restaurant=restaurant).count(),
+        "pending_bookings": Booking.objects.filter(restaurant=restaurant, status=Booking.Status.PENDING).count(),
+        "upcoming_bookings": Booking.objects.filter(
+            restaurant=restaurant,
+            event_date__gte=today,
+            status=Booking.Status.CONFIRMED
+        ).count(),
+        "this_month_bookings": Booking.objects.filter(
+            restaurant=restaurant,
+            event_date__year=today.year,
+            event_date__month=today.month
+        ).count(),
+    }
+    
+    # Najnowsze rezerwacje
+    recent_bookings = Booking.objects.filter(restaurant=restaurant).order_by("-created_at")[:5]
+    
+    # Nadchodzące rezerwacje
+    upcoming_bookings = Booking.objects.filter(
+        restaurant=restaurant,
+        event_date__gte=today,
+        status=Booking.Status.CONFIRMED
+    ).order_by("event_date")[:5]
+    
+    context = {
+        "restaurant": restaurant,
+        "stats": stats,
+        "recent_bookings": recent_bookings,
+        "upcoming_bookings": upcoming_bookings,
+    }
+    return render(request, "bookings/owner/dashboard.html", context)
+
+
+@login_required
+def owner_bookings(request):
+    """Lista wszystkich rezerwacji właściciela restauracji."""
+    try:
+        owner = request.user.restaurant_owner
+        restaurant = owner.restaurant
+    except RestaurantOwner.DoesNotExist:
+        return redirect("home")
+    
+    status_filter = request.GET.get("status", "")
+    bookings = Booking.objects.filter(restaurant=restaurant)
+    
+    if status_filter:
+        bookings = bookings.filter(status=status_filter)
+    
+    bookings = bookings.order_by("-event_date")
+    
+    context = {
+        "restaurant": restaurant,
+        "bookings": bookings,
+        "status_filter": status_filter,
+        "status_choices": Booking.Status.choices,
+    }
+    return render(request, "bookings/owner/bookings.html", context)
+
+
+@login_required
+def owner_booking_detail(request, booking_id):
+    """Szczegóły rezerwacji z opcją zatwierdzania/odrzucania."""
+    try:
+        owner = request.user.restaurant_owner
+        restaurant = owner.restaurant
+    except RestaurantOwner.DoesNotExist:
+        return redirect("home")
+    
+    booking = get_object_or_404(Booking, id=booking_id, restaurant=restaurant)
+    
+    if request.method == "POST":
+        action = request.POST.get("action")
+        
+        if action == "confirm" and booking.status == Booking.Status.PENDING:
+            booking.status = Booking.Status.CONFIRMED
+            booking.save()
+            messages.success(request, f"Rezerwacja #{booking.id} została potwierdzona.")
+            
+        elif action == "cancel" and booking.status in (Booking.Status.PENDING, Booking.Status.CONFIRMED):
+            booking.status = Booking.Status.CANCELLED
+            booking.save()
+            messages.success(request, f"Rezerwacja #{booking.id} została anulowana.")
+        
+        return redirect("owner_booking_detail", booking_id=booking.id)
+    
+    return render(request, "bookings/owner/booking_detail.html", {
+        "restaurant": restaurant,
+        "booking": booking,
+    })
+
+
+@login_required
+def owner_calendar(request):
+    """Kalendarz rezerwacji restauracji."""
+    try:
+        owner = request.user.restaurant_owner
+        restaurant = owner.restaurant
+    except RestaurantOwner.DoesNotExist:
+        messages.error(request, "Nie masz uprawnień do zarządzania restauracją.")
+        return redirect("home")
+    
+    # Pobierz wszystkie rezerwacje (nie tylko z wybranego miesiąca)
+    bookings = Booking.objects.filter(
+        restaurant=restaurant,
+    ).exclude(status=Booking.Status.CANCELLED).select_related('user')
+    
+    # JSON data for calendar
+    calendar_events = []
+    for booking in bookings:
+        color = {
+            Booking.Status.PENDING: "#ffc107",     # żółty
+            Booking.Status.CONFIRMED: "#28a745",   # zielony  
+            Booking.Status.COMPLETED: "#6c757d",   # szary
+        }.get(booking.status, "#dc3545")  # czerwony default
+        
+        calendar_events.append({
+            "id": booking.id,
+            "title": f"{booking.get_event_type_display()} ({booking.guest_count} osób)",
+            "date": booking.event_date.strftime("%Y-%m-%d"),
+            "backgroundColor": color,
+            "borderColor": color,
+            "extendedProps": {
+                "booking": {
+                    "id": booking.id,
+                    "status": booking.status,
+                    "event_type": booking.event_type,
+                    "first_name": booking.first_name,
+                    "last_name": booking.last_name,
+                    "email": booking.email,
+                    "phone": booking.phone,
+                    "guest_count": booking.guest_count,
+                    "notes": booking.notes or "",
+                    "created_at": booking.created_at.isoformat(),
+                }
+            }
+        })
+    
+    return render(request, "bookings/owner/calendar.html", {
+        "restaurant": restaurant,
+        "calendar_events": json.dumps(calendar_events),
+    })

@@ -28,11 +28,24 @@
                         </a>
                     </li>
                     {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'booking_list' %}">
-                            <i class="bi bi-journal-check"></i> Moje rezerwacje
-                        </a>
-                    </li>
+                        {% if user.restaurant_owner %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'owner_dashboard' %}">
+                                <i class="bi bi-speedometer2"></i> Panel restauracji
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'owner_bookings' %}">
+                                <i class="bi bi-calendar-check"></i> Rezerwacje
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'booking_list' %}">
+                                <i class="bi bi-journal-check"></i> Moje rezerwacje
+                            </a>
+                        </li>
+                        {% endif %}
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">

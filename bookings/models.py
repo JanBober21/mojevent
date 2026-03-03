@@ -156,3 +156,30 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.restaurant.name} ({self.rating}/5)"
+
+
+class RestaurantOwner(models.Model):
+    """Właściciel restauracji."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="restaurant_owner",
+        verbose_name="Użytkownik",
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="owners",
+        verbose_name="Restauracja",
+    )
+    is_main_owner = models.BooleanField("Główny właściciel", default=True)
+    created_at = models.DateTimeField("Data dodania", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Właściciel restauracji"
+        verbose_name_plural = "Właściciele restauracji"
+        unique_together = ["user", "restaurant"]
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} → {self.restaurant.name}"

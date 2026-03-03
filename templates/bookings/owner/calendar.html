@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Kalendarz — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block extra_head %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.4/index.global.min.js'></script>
+<style>
+.fc-event-baptism {
+    background-color: #f8f9fa;
+    border-color: #6c757d;
+    color: #212529;
+}
+.fc-event-wedding {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+.fc-event-communion {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+    color: white;
+}
+.fc-event-pending {
+    opacity: 0.7;
+    border-style: dashed;
+}
+.calendar-legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-calendar3"></i> Kalendarz</h1>
+        <p class="text-muted fs-5">{{ restaurant.name }} — {{ restaurant.city }}</p>
+    </div>
+    <div>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-speedometer2"></i> Panel
+        </a>
+        <a href="{% url 'owner_bookings' %}" class="btn btn-outline-primary">
+            <i class="bi bi-list-task"></i> Lista rezerwacji
+        </a>
+    </div>
+</div>
+
+<!-- Legenda -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title mb-3">Legenda</h6>
+        <div class="calendar-legend">
+            <div class="legend-item">
+                <div class="legend-color bg-light border border-secondary"></div>
+                <span>Chrzciny</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color bg-danger"></div>
+                <span>Wesela</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color bg-info"></div>
+                <span>Komunie</span>
+            </div>
+            <div class="legend-item">
+                <div class="badge bg-success">■</div>
+                <span>Zatwierdzone</span>
+            </div>
+            <div class="legend-item">
+                <div class="badge bg-warning text-dark">■</div>
+                <span>Oczekujące</span>
+            </div>
+            <div class="legend-item">
+                <div class="badge bg-danger">■</div>
+                <span>Anulowane</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kalendarz -->
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<!-- Modal szczegółów wydarzenia -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="eventModalTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="eventModalBody">
+                <!-- Zawartość będzie wypełniona przez JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                <a href="#" id="eventDetailLink" class="btn btn-primary">Zobacz szczegóły</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'pl',
+        firstDay: 1,
+        height: 'auto',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listWeek'
+        },
+        buttonText: {
+            today: 'Dziś',
+            month: 'Miesiąc',
+            week: 'Tydzień',
+            day: 'Dzień',
+            list: 'Lista'
+        },
+        events: {{ calendar_events|safe }},
+        eventClick: function(info) {
+            var event = info.event;
+            var booking = event.extendedProps.booking;
+            
+            // Wypełnij modal
+            document.getElementById('eventModalTitle').textContent = 
+                event.title + ' - ' + event.start.toLocaleDateString('pl-PL');
+            
+            var statusBadge = '';
+            switch(booking.status) {
+                case 'pending':
+                    statusBadge = '<span class="badge bg-warning text-dark">Oczekujące</span>';
+                    break;
+                case 'confirmed':
+                    statusBadge = '<span class="badge bg-success">Zatwierdzone</span>';
+                    break;
+                case 'cancelled':
+                    statusBadge = '<span class="badge bg-danger">Anulowane</span>';
+                    break;
+            }
+            
+            var eventTypeBadge = '';
+            switch(booking.event_type) {
+                case 'baptism':
+                    eventTypeBadge = '<span class="badge bg-light text-dark">Chrzciny</span>';
+                    break;
+                case 'wedding':
+                    eventTypeBadge = '<span class="badge bg-danger">Wesele</span>';
+                    break;
+                case 'communion':
+                    eventTypeBadge = '<span class="badge bg-info">Komunia</span>';
+                    break;
+            }
+            
+            document.getElementById('eventModalBody').innerHTML = `
+                <div class="mb-3">
+                    <strong>Status:</strong> ${statusBadge}
+                </div>
+                <div class="mb-3">
+                    <strong>Typ wydarzenia:</strong> ${eventTypeBadge}
+                </div>
+                <div class="mb-3">
+                    <strong>Klient:</strong> ${booking.first_name} ${booking.last_name}
+                </div>
+                <div class="mb-3">
+                    <strong>Email:</strong> <a href="mailto:${booking.email}">${booking.email}</a>
+                </div>
+                <div class="mb-3">
+                    <strong>Telefon:</strong> <a href="tel:${booking.phone}">${booking.phone}</a>
+                </div>
+                <div class="mb-3">
+                    <strong>Liczba gości:</strong> ${booking.guest_count}
+                </div>
+                ${booking.notes ? 
+                    '<div class="mb-3"><strong>Dodatkowe uwagi:</strong><br><small class="text-muted">' + booking.notes + '</small></div>' : ''
+                }
+                <div class="mb-0">
+                    <strong>Data złożenia:</strong> ${new Date(booking.created_at).toLocaleDateString('pl-PL', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}
+                </div>
+            `;
+            
+            // Ustaw link do szczegółów
+            document.getElementById('eventDetailLink').href = 
+                "{% url 'owner_booking_detail' 0 %}".replace('0', booking.id);
+            
+            // Pokaż modal
+            var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+            modal.show();
+        },
+        eventDidMount: function(info) {
+            var event = info.event;
+            var booking = event.extendedProps.booking;
+            
+            // Dodaj odpowiednie klasy CSS
+            var classNames = ['fc-event-' + booking.event_type];
+            
+            if (booking.status === 'pending') {
+                classNames.push('fc-event-pending');
+            }
+            
+            info.el.className += ' ' + classNames.join(' ');
+            
+            // Dodaj tooltip
+            info.el.setAttribute('title', 
+                event.title + '\n' +
+                'Klient: ' + booking.first_name + ' ' + booking.last_name + '\n' +
+                'Goście: ' + booking.guest_count + '\n' +
+                'Status: ' + (booking.status === 'pending' ? 'Oczekujące' : 
+                              booking.status === 'confirmed' ? 'Zatwierdzone' : 'Anulowane')
+            );
+        },
+        eventClassNames: function(arg) {
+            var booking = arg.event.extendedProps.booking;
+            var classes = ['fc-event-' + booking.event_type];
+            
+            if (booking.status === 'pending') {
+                classes.push('fc-event-pending');
+            }
+            
+            return classes;
+        }
+    });
+    
+    calendar.render();
+});
+</script>
+{% endblock %}

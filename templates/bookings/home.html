@@ -17,6 +17,23 @@
         </a>
         {% endif %}
     </div>
+    
+    <!-- Sekcja logowania dla właścicieli restauracji -->
+    {% if not user.is_authenticated %}
+    <div class="mt-4 pt-4 border-top border-light border-opacity-25">
+        <p class="mb-3">Masz restaurację? <strong>Zaloguj się jako właściciel</strong></p>
+        <a href="{% url 'login' %}?next={% url 'owner_dashboard' %}" class="btn btn-outline-light">
+            <i class="bi bi-shop"></i> Panel restauracji
+        </a>
+    </div>
+    {% elif user.restaurant_owner %}
+    <div class="mt-4 pt-4 border-top border-light border-opacity-25">
+        <p class="mb-3">Witaj z powrotem! <strong>{{ user.restaurant_owner.restaurant.name }}</strong></p>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-light">
+            <i class="bi bi-speedometer2"></i> Przejdź do panelu
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Typy uroczystości -->

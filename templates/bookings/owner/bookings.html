@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Rezerwacje — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-list-task"></i> Rezerwacje</h1>
+        <p class="text-muted fs-5">{{ restaurant.name }} — {{ restaurant.city }}</p>
+    </div>
+    <div>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Powrót do panelu
+        </a>
+        <a href="{% url 'owner_calendar' %}" class="btn btn-primary">
+            <i class="bi bi-calendar3"></i> Kalendarz
+        </a>
+    </div>
+</div>
+
+<!-- Filtry -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="status_filter" class="form-label">Status</label>
+                <select name="status" id="status_filter" class="form-select">
+                    <option value="">Wszystkie statusy</option>
+                    <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Oczekujące</option>
+                    <option value="confirmed" {% if current_status == 'confirmed' %}selected{% endif %}>Zatwierdzone</option>
+                    <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Anulowane</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="event_type_filter" class="form-label">Typ wydarzenia</label>
+                <select name="event_type" id="event_type_filter" class="form-select">
+                    <option value="">Wszystkie typy</option>
+                    <option value="baptism" {% if current_event_type == 'baptism' %}selected{% endif %}>Chrzciny</option>
+                    <option value="wedding" {% if current_event_type == 'wedding' %}selected{% endif %}>Wesele</option>
+                    <option value="communion" {% if current_event_type == 'communion' %}selected{% endif %}>Komunia</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">Od daty</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ current_date_from }}">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-funnel"></i> Filtruj
+                </button>
+                <a href="{% url 'owner_bookings' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Wyczyść
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista rezerwacji -->
+{% if bookings %}
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Data wydarzenia</th>
+                    <th>Klient</th>
+                    <th>Typ</th>
+                    <th>Goście</th>
+                    <th>Status</th>
+                    <th>Data złożenia</th>
+                    <th class="text-end">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr>
+                    <td>
+                        <strong>{{ booking.event_date|date:"d.m.Y" }}</strong><br>
+                        <small class="text-muted">{{ booking.event_date|date:"l" }}</small>
+                    </td>
+                    <td>
+                        <strong>{{ booking.first_name }} {{ booking.last_name }}</strong><br>
+                        <small class="text-muted">{{ booking.email }}</small>
+                    </td>
+                    <td>
+                        <span class="badge 
+                            {% if booking.event_type == 'baptism' %}bg-light text-dark
+                            {% elif booking.event_type == 'wedding' %}bg-danger
+                            {% elif booking.event_type == 'communion' %}bg-info
+                            {% endif %}">
+                            {{ booking.get_event_type_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <strong>{{ booking.guest_count }}</strong>
+                    </td>
+                    <td>
+                        <span class="badge 
+                            {% if booking.status == 'pending' %}bg-warning text-dark
+                            {% elif booking.status == 'confirmed' %}bg-success
+                            {% elif booking.status == 'cancelled' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ booking.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {{ booking.created_at|date:"d.m.Y H:i" }}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'owner_booking_detail' booking.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> Zobacz
+                        </a>
+                        {% if booking.status == 'pending' %}
+                        <div class="btn-group ms-1" role="group">
+                            <form method="post" style="display: inline;" action="{% url 'owner_booking_detail' booking.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="confirm">
+                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Zatwierdź tę rezerwację?')">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                            </form>
+                            <form method="post" style="display: inline;" action="{% url 'owner_booking_detail' booking.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="cancel">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Anuluj tę rezerwację?')">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Paginacja -->
+{% if is_paginated %}
+<nav aria-label="Paginacja rezerwacji" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+        {% endif %}
+
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+        </li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <div class="mb-3">
+            <i class="bi bi-calendar-x display-1 text-muted"></i>
+        </div>
+        <h3>Brak rezerwacji</h3>
+        <p class="text-muted">Nie ma jeszcze żadnych rezerwacji spełniających wybrane kryteria.</p>
+        {% if current_status or current_event_type or current_date_from %}
+        <a href="{% url 'owner_bookings' %}" class="btn btn-outline-primary">
+            <i class="bi bi-x-circle"></i> Usuń filtry
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.table td {
+    vertical-align: middle;
+}
+.btn-group .btn {
+    border-radius: 4px;
+}
+.btn-group .btn:not(:last-child) {
+    margin-right: 2px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Rezerwacja #{{ booking.id }} — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-calendar-event"></i> Rezerwacja #{{ booking.id }}</h1>
+        <p class="text-muted fs-5">{{ booking.get_event_type_display }} &middot; {{ booking.event_date|date:"d.m.Y" }}</p>
+    </div>
+    <div>
+        <a href="{% url 'owner_bookings' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Powrót do listy
+        </a>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-primary">
+            <i class="bi bi-speedometer2"></i> Panel
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+{% endif %}
+
+<div class="row">
+    <!-- Informacje o rezerwacji -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Szczegóły rezerwacji</h5>
+                <span class="badge 
+                    {% if booking.status == 'pending' %}bg-warning text-dark
+                    {% elif booking.status == 'confirmed' %}bg-success
+                    {% elif booking.status == 'cancelled' %}bg-danger
+                    {% else %}bg-secondary{% endif %} fs-6">
+                    {{ booking.get_status_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="border-start border-primary border-3 ps-3">
+                            <h6 class="text-muted mb-1">Typ wydarzenia</h6>
+                            <div class="d-flex align-items-center">
+                                <span class="badge 
+                                    {% if booking.event_type == 'baptism' %}bg-light text-dark
+                                    {% elif booking.event_type == 'wedding' %}bg-danger
+                                    {% elif booking.event_type == 'communion' %}bg-info
+                                    {% endif %} me-2">
+                                    {{ booking.get_event_type_display }}
+                                </span>
+                                <span class="text-muted">{{ booking.guest_count }} osób</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border-start border-primary border-3 ps-3">
+                            <h6 class="text-muted mb-1">Data wydarzenia</h6>
+                            <p class="mb-0 fs-5">
+                                <strong>{{ booking.event_date|date:"d.m.Y" }}</strong><br>
+                                <small class="text-muted">{{ booking.event_date|date:"l" }}</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {% if booking.notes %}
+                <div class="mt-4">
+                    <h6 class="text-muted mb-2">Dodatkowe uwagi</h6>
+                    <div class="bg-light rounded p-3">
+                        <p class="mb-0">{{ booking.notes|linebreaks }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mt-4">
+                    <h6 class="text-muted mb-2">Historia rezerwacji</h6>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <strong>Rezerwacja złożona</strong><br>
+                                <small class="text-muted">{{ booking.created_at|date:"d.m.Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% if booking.status == 'confirmed' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <strong>Rezerwacja zatwierdzona</strong><br>
+                                <small class="text-muted">{{ booking.updated_at|date:"d.m.Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% elif booking.status == 'cancelled' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-danger"></div>
+                            <div class="timeline-content">
+                                <strong>Rezerwacja anulowana</strong><br>
+                                <small class="text-muted">{{ booking.updated_at|date:"d.m.Y H:i" }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informacje o kliencie i akcje -->
+    <div class="col-lg-4">
+        <!-- Dane klienta -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-person"></i> Dane klienta</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-muted mb-1">Imię i nazwisko</h6>
+                    <p class="mb-0">{{ booking.first_name }} {{ booking.last_name }}</p>
+                </div>
+                <div class="mb-3">
+                    <h6 class="text-muted mb-1">Email</h6>
+                    <p class="mb-0">
+                        <a href="mailto:{{ booking.email }}" class="text-decoration-none">
+                            <i class="bi bi-envelope me-1"></i>{{ booking.email }}
+                        </a>
+                    </p>
+                </div>
+                <div class="mb-0">
+                    <h6 class="text-muted mb-1">Telefon</h6>
+                    <p class="mb-0">
+                        <a href="tel:{{ booking.phone }}" class="text-decoration-none">
+                            <i class="bi bi-telephone me-1"></i>{{ booking.phone }}
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Akcje -->
+        {% if booking.status == 'pending' %}
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-gear"></i> Akcje</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="confirm">
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Czy na pewno chcesz zatwierdzić tę rezerwację?')">
+                            <i class="bi bi-check-circle me-2"></i>Zatwierdź rezerwację
+                        </button>
+                    </form>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="cancel">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Czy na pewno chcesz anulować tę rezerwację?')">
+                            <i class="bi bi-x-circle me-2"></i>Anuluj rezerwację
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% elif booking.status == 'confirmed' %}
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-check-circle"></i> Status</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-success mb-2">
+                    <i class="bi bi-check-circle-fill me-2"></i>Rezerwacja zatwierdzona
+                </p>
+                <small class="text-muted">
+                    Klient został powiadomiony o zatwierdzeniu rezerwacji.
+                </small>
+            </div>
+        </div>
+        {% elif booking.status == 'cancelled' %}
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-x-circle"></i> Status</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-danger mb-2">
+                    <i class="bi bi-x-circle-fill me-2"></i>Rezerwacja anulowana
+                </p>
+                <small class="text-muted">
+                    Klient został powiadomiony o anulowaniu rezerwacji.
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    left: -16px;
+    top: 10px;
+    bottom: 20px;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-content {
+    padding-left: 15px;
+}
+</style>
+{% endblock %}

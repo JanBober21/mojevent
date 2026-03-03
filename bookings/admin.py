@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Restaurant, Booking, Review
+from .models import Restaurant, Booking, Review, RestaurantOwner
 
 
 @admin.register(Restaurant)
@@ -39,4 +39,13 @@ class ReviewAdmin(admin.ModelAdmin):
     list_display = ["user", "restaurant", "rating", "created_at"]
     list_filter = ["rating", "created_at"]
     search_fields = ["user__username", "restaurant__name", "comment"]
+    readonly_fields = ["created_at"]
+
+
+@admin.register(RestaurantOwner)
+class RestaurantOwnerAdmin(admin.ModelAdmin):
+    list_display = ["user", "restaurant", "is_main_owner", "created_at"]
+    list_filter = ["is_main_owner", "created_at", "restaurant__city"]
+    search_fields = ["user__username", "user__first_name", "user__last_name", "restaurant__name"]
+    autocomplete_fields = ["user", "restaurant"]
     readonly_fields = ["created_at"]

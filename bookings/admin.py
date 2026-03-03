@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django.utils.html import format_html
+from django.http import HttpResponse
+import csv
 from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote
 
 
@@ -41,7 +43,32 @@ class RestaurantAdmin(admin.ModelAdmin):
         ("Udogodnienia", {"fields": ("has_parking", "has_garden", "has_dance_floor", "has_accommodation")}),
     )
     list_editable = ["is_active"]
+    actions = ["export_csv"]
 
+    @admin.action(description="Eksportuj zaznaczone do CSV")
+    def export_csv(self, request, queryset):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="restauracje.csv"'
+        response.write("\ufeff")  # BOM for Excel UTF-8
+        writer = csv.writer(response, delimiter=";")
+        writer.writerow([
+            "Nazwa", "Miasto", "Adres", "Telefon", "Email", "Strona www",
+            "Maks. go\u015bci", "Cena/os.", "Parking", "Ogr\u00f3d", "Parkiet",
+            "Noclegi", "Aktywna", "Szeroko\u015b\u0107 GPS", "D\u0142ugo\u015b\u0107 GPS",
+        ])
+        for r in queryset:
+            writer.writerow([
+                r.name, r.city, r.address, r.phone, r.email, r.website or "",
+                r.max_guests, r.price_per_person,
+                "Tak" if r.has_parking else "Nie",
+                "Tak" if r.has_garden else "Nie",
+                "Tak" if r.has_dance_floor else "Nie",
+                "Tak" if r.has_accommodation else "Nie",
+                "Tak" if r.is_active else "Nie",
+                r.latitude or "", r.longitude or "",
+            ])
+        self.message_user(request, f"Wyeksportowano {queryset.count()} restauracji do CSV.")
+        return response
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):

@@ -134,11 +134,24 @@ def restaurant_detail(request, pk):
         if items.exists():
             menu_by_category.append({"label": cat_label, "items": items})
 
+    # Oferta atrakcji (tylko dla typu attraction)
+    attraction_items = []
+    if restaurant.firm_type == Restaurant.FirmType.ATTRACTION:
+        from .models import AttractionItem
+        tags = AttractionItem.Tag.choices
+        for tag_value, tag_label in tags:
+            items = AttractionItem.objects.filter(
+                restaurant=restaurant, tag=tag_value, is_active=True
+            )
+            if items.exists():
+                attraction_items.append({"label": tag_label, "items": items})
+
     return render(request, "bookings/restaurant_detail.html", {
         "restaurant": restaurant,
         "reviews": reviews,
         "review_form": review_form,
         "menu_by_category": menu_by_category,
+        "attraction_items": attraction_items,
     })
 
 

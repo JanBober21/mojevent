@@ -1,5 +1,27 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+from django.utils.html import format_html
 from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote
+
+
+# ── Rozszerzony panel użytkowników z kolumną Rola ─────────────────────────────
+
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    list_display = ["username", "first_name", "last_name", "email", "rola", "is_active", "date_joined"]
+    list_filter = ["is_superuser", "is_staff", "is_active"]
+
+    @admin.display(description="Rola", ordering="is_superuser")
+    def rola(self, obj):
+        if obj.is_superuser:
+            return format_html('<span style="color:#dc3545;font-weight:bold;">⛑ Administracja</span>')
+        if hasattr(obj, "restaurant_owner"):
+            return format_html('<span style="color:#198754;font-weight:bold;">🏪 Restauracja</span>')
+        return format_html('<span style="color:#0d6efd;">👤 Użytkownik</span>')
 
 
 @admin.register(Restaurant)

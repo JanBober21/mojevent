@@ -213,7 +213,8 @@ class RestaurantOwner(models.Model):
         unique_together = ["user", "restaurant"]
 
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username} → {self.restaurant.name}"
+        name = self.restaurant.name if self.restaurant else "(brak firmy)"
+        return f"{self.user.get_full_name() or self.user.username} → {name}"
 
 
 class BookingNote(models.Model):

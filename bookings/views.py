@@ -258,7 +258,7 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, f"Witaj, {user.first_name}! Konto zostało utworzone.")
             return redirect("home")
     else:
@@ -267,13 +267,13 @@ def register(request):
 
 
 def owner_register(request):
-    """Rejestracja właściciela restauracji."""
+    """Rejestracja właściciela firmy."""
     if request.method == "POST":
         form = OwnerRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
             RestaurantOwner.objects.create(user=user, restaurant=None)
-            login(request, user)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, f"Witaj, {user.first_name}! Konto właściciela zostało utworzone. Dodaj teraz swoją firmę.")
             return redirect("owner_restaurant_create")
     else:

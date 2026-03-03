@@ -236,24 +236,26 @@ class RestaurantForm(forms.ModelForm):
         raw = self.cleaned_data.get("coords", "").strip()
         if not raw:
             return ""
-        # Normalize: remove °, N/S/E/W suffixes, extra spaces
         import re
+        from decimal import Decimal, ROUND_HALF_UP
         raw = raw.replace("°", "").strip()
-        # Try "lat, lng" or "lat lng" (decimal)
-        m = re.match(r'^([+-]?\d+[.,]\d+)[,;\s]+([+-]?\d+[.,]\d+)$', raw)
-        if m:
-            return f"{m.group(1).replace(',', '.')}, {m.group(2).replace(',', '.')}"
-        raise forms.ValidationError("Nieprawidłowy format. Wklej współrzędne np. 52.2297, 21.0122")
+        # Match "lat, lng" or "lat lng" — with or without decimal part
+        m = re.match(r'^([+-]?\d+(?:[.,]\d+)?)[,;\s]+([+-]?\d+(?:[.,]\d+)?)$', raw)
+        if not m:
+            raise forms.ValidationError("Nieprawidłowy format. Wklej współrzędne np. 52.2297, 21.0122")
+        lat = Decimal(m.group(1).replace(",", ".")).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+        lng = Decimal(m.group(2).replace(",", ".")).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+        return f"{lat}, {lng}"
 
     def clean(self):
         cleaned = super().clean()
         coords = cleaned.get("coords", "")
         if coords:
+            from decimal import Decimal
             parts = coords.split(",")
-            cleaned["latitude"] = round(float(parts[0].strip()), 6)
-            cleaned["longitude"] = round(float(parts[1].strip()), 6)
+            cleaned["latitude"] = Decimal(parts[0].strip())
+            cleaned["longitude"] = Decimal(parts[1].strip())
         else:
-            # Keep existing or clear
             if not cleaned.get("latitude"):
                 cleaned["latitude"] = None
             if not cleaned.get("longitude"):

@@ -181,6 +181,16 @@ class OwnerRegisterForm(UserCreationForm):
 class RestaurantForm(forms.ModelForm):
     """Formularz dodawania/edycji firmy."""
 
+    coords = forms.CharField(
+        required=False,
+        label="Współrzędna GPS",
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "id": "id_coords",
+            "placeholder": "np. 52.2297, 21.0122  (wklej z Google Maps)",
+        }),
+    )
+
     class Meta:
         model = Restaurant
         fields = [
@@ -197,8 +207,8 @@ class RestaurantForm(forms.ModelForm):
             "delivery_radius_km": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
-            "address": forms.TextInput(attrs={"class": "form-control"}),
-            "city": forms.TextInput(attrs={"class": "form-control"}),
+            "address": forms.TextInput(attrs={"class": "form-control", "id": "id_address"}),
+            "city": forms.TextInput(attrs={"class": "form-control", "id": "id_city"}),
             "phone": forms.TextInput(attrs={"class": "form-control"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
             "website": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://..."}),
@@ -209,6 +219,43 @@ class RestaurantForm(forms.ModelForm):
             "has_garden": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "has_dance_floor": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "has_accommodation": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "latitude": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001", "placeholder": "np. 52.2297"}),
-            "longitude": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001", "placeholder": "np. 21.0122"}),
+            "latitude": forms.HiddenInput(attrs={"id": "id_latitude"}),
+            "longitude": forms.HiddenInput(attrs={"id": "id_longitude"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-populate coords from existing lat/lng
+        if self.instance and self.instance.pk:
+            lat = self.instance.latitude
+            lng = self.instance.longitude
+            if lat and lng:
+                self.fields["coords"].initial = f"{lat}, {lng}"
+
+    def clean_coords(self):
+        raw = self.cleaned_data.get("coords", "").strip()
+        if not raw:
+            return ""
+        # Normalize: remove °, N/S/E/W suffixes, extra spaces
+        import re
+        raw = raw.replace("°", "").strip()
+        # Try "lat, lng" or "lat lng" (decimal)
+        m = re.match(r'^([+-]?\d+[.,]\d+)[,;\s]+([+-]?\d+[.,]\d+)$', raw)
+        if m:
+            return f"{m.group(1).replace(',', '.')}, {m.group(2).replace(',', '.')}"
+        raise forms.ValidationError("Nieprawidłowy format. Wklej współrzędne np. 52.2297, 21.0122")
+
+    def clean(self):
+        cleaned = super().clean()
+        coords = cleaned.get("coords", "")
+        if coords:
+            parts = coords.split(",")
+            cleaned["latitude"] = round(float(parts[0].strip()), 6)
+            cleaned["longitude"] = round(float(parts[1].strip()), 6)
+        else:
+            # Keep existing or clear
+            if not cleaned.get("latitude"):
+                cleaned["latitude"] = None
+            if not cleaned.get("longitude"):
+                cleaned["longitude"] = None
+        return cleaned

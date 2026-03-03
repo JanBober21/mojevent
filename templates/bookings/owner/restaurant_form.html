@@ -145,24 +145,36 @@
                         </div>
                     </div>
 
-                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-pin-map"></i> Lokalizacja GPS (opcjonalne)</h5>
+                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-pin-map"></i> Lokalizacja GPS</h5>
+                    <!-- hidden lat/lng fields -->
+                    {{ form.latitude }}
+                    {{ form.longitude }}
+
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Szerokość geograficzna</label>
-                            {{ form.latitude }}
+                        <div class="col-md-8">
+                            <label class="form-label">Współrzędna</label>
+                            {{ form.coords }}
+                            {% if form.coords.errors %}<div class="text-danger small">{{ form.coords.errors }}</div>{% endif %}
                             {% if form.latitude.errors %}<div class="text-danger small">{{ form.latitude.errors }}</div>{% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Długość geograficzna</label>
-                            {{ form.longitude }}
                             {% if form.longitude.errors %}<div class="text-danger small">{{ form.longitude.errors }}</div>{% endif %}
-                        </div>
-                        <div class="col-12">
                             <small class="text-muted">
-                                Współrzędne GPS pozwalają wyświetlić firmę na mapie. 
-                                Możesz znaleźć współrzędne na <a href="https://www.google.com/maps" target="_blank">Google Maps</a> 
-                                (kliknij prawym przyciskiem myszy na lokalizację).
+                                Wklej współrzędne z Google Maps (PPM → Kopiuj współrzędne), np. <code>52.2297, 21.0122</code>
                             </small>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-secondary w-100" id="btnGeocode">
+                                <i class="bi bi-search"></i> Pobierz z adresu
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-12">
+                            <div id="miniMap" style="height:260px; border-radius:.5rem; border:1px solid #dee2e6; display:none;"></div>
+                            <div id="mapPlaceholder" class="text-center text-muted py-4 border rounded" style="border-style:dashed!important;">
+                                <i class="bi bi-geo-alt" style="font-size:2rem;"></i><br>
+                                Podaj współrzędne lub kliknij „Pobierz z adresu" aby wyświetlić mapę
+                            </div>
                         </div>
                     </div>
 
@@ -184,8 +196,12 @@
     </div>
 </div>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ── Typ firmy toggle ─────────────────────────────────────────────────
     const firmType = document.getElementById('id_firm_type');
     const attractionField = document.getElementById('attractionTypeField');
     const deliveryField = document.getElementById('deliveryRadiusField');
@@ -198,6 +214,113 @@ document.addEventListener('DOMContentLoaded', function() {
 
     firmType.addEventListener('change', toggleFields);
     toggleFields();
+
+    // ── Mapa & współrzędne ───────────────────────────────────────────────
+    const coordsInput = document.getElementById('id_coords');
+    const latInput = document.getElementById('id_latitude');
+    const lngInput = document.getElementById('id_longitude');
+    const mapDiv = document.getElementById('miniMap');
+    const mapPlaceholder = document.getElementById('mapPlaceholder');
+    const btnGeocode = document.getElementById('btnGeocode');
+
+    let map = null;
+    let marker = null;
+
+    function initMap(lat, lng) {
+        mapPlaceholder.style.display = 'none';
+        mapDiv.style.display = 'block';
+
+        if (!map) {
+            map = L.map('miniMap').setView([lat, lng], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            marker = L.marker([lat, lng], {draggable: true}).addTo(map);
+
+            // Drag marker → update coords
+            marker.on('dragend', function() {
+                const pos = marker.getLatLng();
+                const fLat = pos.lat.toFixed(6);
+                const fLng = pos.lng.toFixed(6);
+                coordsInput.value = fLat + ', ' + fLng;
+                latInput.value = fLat;
+                lngInput.value = fLng;
+            });
+        } else {
+            map.setView([lat, lng], 15);
+            marker.setLatLng([lat, lng]);
+        }
+    }
+
+    function parseAndShowCoords(raw) {
+        if (!raw) return;
+        raw = raw.trim().replace(/°/g, '');
+        // Match "lat, lng" or "lat lng"
+        const m = raw.match(/^([+-]?\d+[.,]\d+)[,;\s]+([+-]?\d+[.,]\d+)$/);
+        if (m) {
+            const lat = parseFloat(m[1].replace(',', '.'));
+            const lng = parseFloat(m[2].replace(',', '.'));
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                const fLat = lat.toFixed(6);
+                const fLng = lng.toFixed(6);
+                coordsInput.value = fLat + ', ' + fLng;
+                latInput.value = fLat;
+                lngInput.value = fLng;
+                initMap(lat, lng);
+                return;
+            }
+        }
+        // Invalid – hide map
+        latInput.value = '';
+        lngInput.value = '';
+    }
+
+    // Parse on input change (paste / type)
+    coordsInput.addEventListener('change', function() { parseAndShowCoords(this.value); });
+    coordsInput.addEventListener('paste', function() {
+        setTimeout(() => parseAndShowCoords(this.value), 50);
+    });
+
+    // Init map from existing coords
+    if (coordsInput.value.trim()) {
+        parseAndShowCoords(coordsInput.value);
+    }
+
+    // ── Nominatim geocoding ──────────────────────────────────────────────
+    btnGeocode.addEventListener('click', function() {
+        const address = document.getElementById('id_address')?.value || '';
+        const city = document.getElementById('id_city')?.value || '';
+        const q = (address + ', ' + city).trim().replace(/^,\s*/, '').replace(/,\s*$/, '');
+        if (!q || q.length < 3) {
+            alert('Wpisz najpierw adres i/lub miasto.');
+            return;
+        }
+
+        btnGeocode.disabled = true;
+        btnGeocode.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Szukam…';
+
+        fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=pl&q=' + encodeURIComponent(q), {
+            headers: { 'Accept-Language': 'pl' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.length > 0) {
+                const lat = parseFloat(data[0].lat).toFixed(6);
+                const lng = parseFloat(data[0].lon).toFixed(6);
+                coordsInput.value = lat + ', ' + lng;
+                latInput.value = lat;
+                lngInput.value = lng;
+                initMap(parseFloat(lat), parseFloat(lng));
+            } else {
+                alert('Nie znaleziono lokalizacji. Spróbuj wpisać inny adres lub wklej współrzędne ręcznie.');
+            }
+        })
+        .catch(() => alert('Błąd połączenia z serwisem geokodowania.'))
+        .finally(() => {
+            btnGeocode.disabled = false;
+            btnGeocode.innerHTML = '<i class="bi bi-search"></i> Pobierz z adresu';
+        });
+    });
 });
 </script>
 {% endblock %}

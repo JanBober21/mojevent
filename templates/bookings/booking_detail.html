@@ -67,6 +67,10 @@
                     </small>
                     <div class="d-flex gap-2">
                         {% if booking.status != 'cancelled' %}
+                        <a href="{% url 'booking_menu_select' booking.pk %}" class="btn btn-outline-success">
+                            <i class="bi bi-menu-button-wide"></i>
+                            {% if booking.menu_selections.count %}Edytuj menu{% else %}Wybierz menu{% endif %}
+                        </a>
                         <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ booking.get_event_type_display|urlencode }}+-+{{ booking.restaurant.name|urlencode }}&dates={{ booking.event_date|date:'Ymd' }}T100000/{{ booking.event_date|date:'Ymd' }}T220000&details=Rezerwacja+nr+{{ booking.pk }}%0AGości:+{{ booking.guest_count }}%0AKontakt:+{{ booking.phone }}%0A{{ booking.email }}&location={{ booking.restaurant.address|urlencode }},+{{ booking.restaurant.city|urlencode }}&sf=true" target="_blank" class="btn btn-outline-primary">
                             <i class="bi bi-google"></i> Dodaj do Google Calendar
                         </a>

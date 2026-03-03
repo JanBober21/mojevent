@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, date
 import json
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
@@ -90,10 +90,20 @@ def restaurant_detail(request, pk):
         if not existing_review:
             review_form = ReviewForm()
 
+    # Menu widoczne publicznie
+    visible_menu = MenuItem.objects.filter(restaurant=restaurant, is_visible=True)
+    categories = MenuItem.Category.choices
+    menu_by_category = []
+    for cat_value, cat_label in categories:
+        items = visible_menu.filter(category=cat_value)
+        if items.exists():
+            menu_by_category.append({"label": cat_label, "items": items})
+
     return render(request, "bookings/restaurant_detail.html", {
         "restaurant": restaurant,
         "reviews": reviews,
         "review_form": review_form,
+        "menu_by_category": menu_by_category,
     })
 
 
@@ -527,4 +537,166 @@ def owner_calendar(request):
         "next_month": next_month,
         "next_year": next_year,
         "month_stats": month_stats,
+    })
+
+
+# ── Menu restauracji (panel właściciela) ──────────────────────────────────────────
+
+@login_required
+def owner_menu(request):
+    """Zarządzanie menu restauracji."""
+    try:
+        owner = request.user.restaurant_owner
+    except RestaurantOwner.DoesNotExist:
+        return redirect("home")
+
+    restaurant = owner.restaurant
+    if not restaurant:
+        return redirect("owner_restaurant_create")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "add":
+            category = request.POST.get("category", "")
+            name = request.POST.get("name", "").strip()
+            description = request.POST.get("description", "").strip()
+            price = request.POST.get("price", "0")
+            is_visible = request.POST.get("is_visible") == "on"
+            if name and category:
+                try:
+                    MenuItem.objects.create(
+                        restaurant=restaurant,
+                        category=category,
+                        name=name,
+                        description=description,
+                        price=price,
+                        is_visible=is_visible,
+                    )
+                    messages.success(request, f"Dodano: {name}")
+                except Exception:
+                    messages.error(request, "Błąd przy dodawaniu pozycji.")
+            else:
+                messages.error(request, "Podaj nazwę i kategorię.")
+
+        elif action == "edit":
+            item_id = request.POST.get("item_id")
+            item = MenuItem.objects.filter(id=item_id, restaurant=restaurant).first()
+            if item:
+                item.category = request.POST.get("category", item.category)
+                item.name = request.POST.get("name", item.name).strip()
+                item.description = request.POST.get("description", "").strip()
+                item.price = request.POST.get("price", item.price)
+                item.is_visible = request.POST.get("is_visible") == "on"
+                item.save()
+                messages.success(request, f"Zaktualizowano: {item.name}")
+
+        elif action == "delete":
+            item_id = request.POST.get("item_id")
+            MenuItem.objects.filter(id=item_id, restaurant=restaurant).delete()
+            messages.success(request, "Pozycja usunięta.")
+
+        return redirect("owner_menu")
+
+    # Grupuj pozycje wg kategorii
+    categories = MenuItem.Category.choices
+    menu_by_category = []
+    for cat_value, cat_label in categories:
+        items = MenuItem.objects.filter(restaurant=restaurant, category=cat_value)
+        menu_by_category.append({
+            "value": cat_value,
+            "label": cat_label,
+            "items": items,
+            "count": items.count(),
+        })
+
+    return render(request, "bookings/owner/menu.html", {
+        "restaurant": restaurant,
+        "menu_by_category": menu_by_category,
+        "categories": categories,
+    })
+
+
+# ── Wybór menu przez klienta ────────────────────────────────────────────────
+
+@login_required
+def booking_menu_select(request, pk):
+    """Wybór/edycja menu przez klienta po rezerwacji."""
+    booking = get_object_or_404(Booking, pk=pk, user=request.user)
+    restaurant = booking.restaurant
+    menu_items = MenuItem.objects.filter(restaurant=restaurant, is_visible=True)
+
+    if not menu_items.exists():
+        messages.info(request, "Ta restauracja nie udostępniła jeszcze menu.")
+        return redirect("booking_detail", pk=pk)
+
+    if request.method == "POST":
+        # Zbierz obecne wybory, żeby porównać z nowymi
+        old_selections = {s.menu_item_id: s.quantity for s in booking.menu_selections.all()}
+
+        # Usuń stare wybory
+        booking.menu_selections.all().delete()
+
+        new_selections = []
+        for item in menu_items:
+            qty_str = request.POST.get(f"qty_{item.id}", "0")
+            try:
+                qty = int(qty_str)
+            except ValueError:
+                qty = 0
+            if qty > 0:
+                BookingMenuItem.objects.create(
+                    booking=booking,
+                    menu_item=item,
+                    quantity=qty,
+                )
+                new_selections.append(f"{item.name} x{qty}")
+
+        # Loguj w CRM
+        if new_selections:
+            changes_text = "\n".join(new_selections)
+            note_title = "Zmiana wyboru menu" if old_selections else "Wybór menu"
+            BookingNote.objects.create(
+                booking=booking,
+                author=request.user,
+                date=timezone.now().date(),
+                title=note_title,
+                content=f"Klient zaktualizował wybór menu:\n{changes_text}",
+            )
+            messages.success(request, "Menu zostało zapisane.")
+        else:
+            if old_selections:
+                BookingNote.objects.create(
+                    booking=booking,
+                    author=request.user,
+                    date=timezone.now().date(),
+                    title="Usunięcie wyboru menu",
+                    content="Klient usunął wszystkie pozycje z menu.",
+                )
+            messages.info(request, "Nie wybrano żadnych pozycji menu.")
+
+        return redirect("booking_detail", pk=pk)
+
+    # Przygotuj dane z aktualnymi wyborami
+    current_selections = {s.menu_item_id: s.quantity for s in booking.menu_selections.all()}
+    categories = MenuItem.Category.choices
+    menu_by_category = []
+    for cat_value, cat_label in categories:
+        items = menu_items.filter(category=cat_value)
+        items_with_qty = []
+        for item in items:
+            items_with_qty.append({
+                "item": item,
+                "qty": current_selections.get(item.id, 0),
+            })
+        if items_with_qty:
+            menu_by_category.append({
+                "label": cat_label,
+                "items": items_with_qty,
+            })
+
+    return render(request, "bookings/booking_menu.html", {
+        "booking": booking,
+        "restaurant": restaurant,
+        "menu_by_category": menu_by_category,
     })

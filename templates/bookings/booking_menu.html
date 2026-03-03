@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Menu — Rezerwacja #{{ booking.pk }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'booking_list' %}">Moje rezerwacje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'booking_detail' booking.pk %}">Rezerwacja #{{ booking.pk }}</a></li>
+        <li class="breadcrumb-item active">Wybór menu</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-menu-button-wide"></i>
+                    Menu — {{ restaurant.name }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Wybierz pozycje z menu i podaj liczbę porcji dla każdej.
+                    Pozycje z ilością 0 nie zostaną zapisane.
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    {% for group in menu_by_category %}
+                    <h5 class="mt-4 mb-3 border-bottom pb-2">
+                        <i class="bi bi-tag"></i> {{ group.label }}
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Pozycja</th>
+                                    <th>Opis</th>
+                                    <th class="text-end">Cena / szt.</th>
+                                    <th class="text-center" style="width:120px;">Ilość</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in group.items %}
+                                <tr>
+                                    <td class="fw-semibold">{{ entry.item.name }}</td>
+                                    <td class="text-muted small">{{ entry.item.description|default:"-" }}</td>
+                                    <td class="text-end">{{ entry.item.price }} zł</td>
+                                    <td>
+                                        <input type="number" name="qty_{{ entry.item.id }}"
+                                               class="form-control form-control-sm text-center"
+                                               value="{{ entry.qty }}" min="0" max="999">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
+
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Wróć
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-lg"></i> Zapisz wybór menu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -214,3 +214,71 @@ class BookingNote(models.Model):
 
     def __str__(self):
         return f"{self.date} — {self.title}"
+
+
+class MenuItem(models.Model):
+    """Pozycja menu restauracji."""
+
+    class Category(models.TextChoices):
+        APPETIZER = "appetizer", "Przystawki"
+        SOUP = "soup", "Zupy"
+        MAIN = "main", "Główne danie"
+        DESSERT = "dessert", "Deser"
+        BUFFET = "buffet", "Bufet"
+        DRINK = "drink", "Napoje"
+
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="menu_items",
+        verbose_name="Restauracja",
+    )
+    category = models.CharField(
+        "Kategoria", max_length=20, choices=Category.choices
+    )
+    name = models.CharField("Nazwa", max_length=200)
+    description = models.TextField("Opis", blank=True)
+    price = models.DecimalField(
+        "Cena (zł)", max_digits=8, decimal_places=2, default=0
+    )
+    is_visible = models.BooleanField("Pokaż na głównej stronie", default=True)
+    order = models.PositiveIntegerField("Kolejność", default=0)
+    created_at = models.DateTimeField("Utworzono", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Pozycja menu"
+        verbose_name_plural = "Pozycje menu"
+        ordering = ["category", "order", "name"]
+
+    def __str__(self):
+        return f"{self.get_category_display()}: {self.name} ({self.price} zł)"
+
+
+class BookingMenuItem(models.Model):
+    """Wybór pozycji menu przez klienta przy rezerwacji."""
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="menu_selections",
+        verbose_name="Rezerwacja",
+    )
+    menu_item = models.ForeignKey(
+        MenuItem,
+        on_delete=models.CASCADE,
+        related_name="booking_selections",
+        verbose_name="Pozycja menu",
+    )
+    quantity = models.PositiveIntegerField("Ilość", default=1)
+
+    class Meta:
+        verbose_name = "Wybór menu"
+        verbose_name_plural = "Wybory menu"
+        unique_together = ["booking", "menu_item"]
+
+    def __str__(self):
+        return f"{self.menu_item.name} x{self.quantity}"
+
+    @property
+    def subtotal(self):
+        return self.menu_item.price * self.quantity

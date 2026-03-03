@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.http import HttpResponse
 import csv
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem
 
 
 # ── Rozszerzony panel użytkowników z kolumną Rola ─────────────────────────────
@@ -106,3 +106,18 @@ class BookingNoteAdmin(admin.ModelAdmin):
     list_filter = ["date", "created_at"]
     search_fields = ["title", "content", "booking__first_name", "booking__last_name"]
     readonly_fields = ["created_at"]
+
+
+@admin.register(MenuItem)
+class MenuItemAdmin(admin.ModelAdmin):
+    list_display = ["name", "restaurant", "category", "price", "is_visible", "order"]
+    list_filter = ["category", "is_visible", "restaurant"]
+    search_fields = ["name", "description", "restaurant__name"]
+    list_editable = ["is_visible", "order"]
+
+
+@admin.register(BookingMenuItem)
+class BookingMenuItemAdmin(admin.ModelAdmin):
+    list_display = ["booking", "menu_item", "quantity"]
+    list_filter = ["menu_item__restaurant", "menu_item__category"]
+    search_fields = ["booking__first_name", "booking__last_name", "menu_item__name"]

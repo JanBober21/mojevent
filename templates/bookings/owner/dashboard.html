@@ -26,34 +26,38 @@
 <!-- Statystyki -->
 <div class="row g-4 mb-5">
     <div class="col-md-3">
-        <div class="card text-center bg-primary text-white">
+        <div class="card stat-card text-center">
             <div class="card-body">
-                <h2 class="display-4">{{ stats.total_bookings }}</h2>
-                <p class="mb-0">Łącznie rezerwacji</p>
+                <div class="stat-icon" style="background: rgba(124,58,237,0.12); color: #7c3aed;"><i class="bi bi-journal-check"></i></div>
+                <h2 class="display-4 fw-bold" style="color: #1a1a1a;">{{ stats.total_bookings }}</h2>
+                <p class="mb-0 text-muted">Łącznie rezerwacji</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center bg-warning text-dark">
+        <div class="card stat-card text-center">
             <div class="card-body">
-                <h2 class="display-4">{{ stats.pending_bookings }}</h2>
-                <p class="mb-0">Oczekujące</p>
+                <div class="stat-icon" style="background: rgba(245,158,11,0.12); color: #f59e0b;"><i class="bi bi-hourglass-split"></i></div>
+                <h2 class="display-4 fw-bold" style="color: #1a1a1a;">{{ stats.pending_bookings }}</h2>
+                <p class="mb-0 text-muted">Oczekujące</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center bg-success text-white">
+        <div class="card stat-card text-center">
             <div class="card-body">
-                <h2 class="display-4">{{ stats.upcoming_bookings }}</h2>
-                <p class="mb-0">Nadchodzące</p>
+                <div class="stat-icon" style="background: rgba(16,185,129,0.12); color: #10b981;"><i class="bi bi-calendar-check"></i></div>
+                <h2 class="display-4 fw-bold" style="color: #1a1a1a;">{{ stats.upcoming_bookings }}</h2>
+                <p class="mb-0 text-muted">Nadchodzące</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center bg-info text-white">
+        <div class="card stat-card text-center">
             <div class="card-body">
-                <h2 class="display-4">{{ stats.this_month_bookings }}</h2>
-                <p class="mb-0">W tym miesiącu</p>
+                <div class="stat-icon" style="background: rgba(59,130,246,0.12); color: #3b82f6;"><i class="bi bi-calendar-month"></i></div>
+                <h2 class="display-4 fw-bold" style="color: #1a1a1a;">{{ stats.this_month_bookings }}</h2>
+                <p class="mb-0 text-muted">W tym miesiącu</p>
             </div>
         </div>
     </div>

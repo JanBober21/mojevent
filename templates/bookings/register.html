@@ -6,11 +6,11 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white text-center">
+        <div class="card auth-card">
+            <div class="card-header text-white text-center">
                 <h4 class="mb-0"><i class="bi bi-person-plus"></i> Rejestracja klienta</h4>
             </div>
-            <div class="card-body p-4">
+            <div class="card-body">
                 <form method="post" novalidate>
                     {% csrf_token %}
 

@@ -44,7 +44,7 @@
             <div class="card-body">
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <div class="border-start border-primary border-3 ps-3">
+                        <div class="border-start border-3 ps-3" style="border-color: #7c3aed !important;">
                             <h6 class="text-muted mb-1">Typ wydarzenia</h6>
                             <div class="d-flex align-items-center">
                                 <span class="badge 
@@ -59,7 +59,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="border-start border-primary border-3 ps-3">
+                        <div class="border-start border-3 ps-3" style="border-color: #7c3aed !important;">
                             <h6 class="text-muted mb-1">Data wydarzenia</h6>
                             <p class="mb-0 fs-5">
                                 <strong>{{ booking.event_date|date:"d.m.Y" }}</strong><br>
@@ -183,7 +183,7 @@
         </div>
         {% elif booking.status == 'confirmed' %}
         <div class="card shadow-sm border-success">
-            <div class="card-header bg-success text-white">
+            <div class="card-header text-white" style="background: linear-gradient(135deg, #059669, #047857);">
                 <h5 class="mb-0"><i class="bi bi-check-circle"></i> Status</h5>
             </div>
             <div class="card-body">
@@ -197,7 +197,7 @@
         </div>
         {% elif booking.status == 'cancelled' %}
         <div class="card shadow-sm border-danger">
-            <div class="card-header bg-danger text-white">
+            <div class="card-header text-white" style="background: linear-gradient(135deg, #dc2626, #b91c1c);">
                 <h5 class="mb-0"><i class="bi bi-x-circle"></i> Status</h5>
             </div>
             <div class="card-body">
@@ -214,7 +214,7 @@
         <!-- Zamykanie dealu -->
         {% if booking.deal_closed_at %}
         <div class="card shadow-sm border-success mt-3">
-            <div class="card-header bg-success text-white">
+            <div class="card-header text-white" style="background: linear-gradient(135deg, #059669, #047857);">
                 <h5 class="mb-0"><i class="bi bi-handshake"></i> Deal zamknięty</h5>
             </div>
             <div class="card-body">
@@ -269,17 +269,17 @@
 </div>
 
 <!-- Czat z klientem -->
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
         <h5 class="mb-0"><i class="bi bi-chat-dots"></i> Czat z klientem</h5>
-        <span class="badge bg-light text-dark">{{ chat_messages|length }} wiadomości</span>
+        <span class="badge bg-white" style="color: #7c3aed;">{{ chat_messages|length }} wiadomości</span>
     </div>
     <div class="card-body">
         <div id="chatBox" style="max-height:400px; overflow-y:auto;" class="mb-3">
             {% if chat_messages %}
             {% for msg in chat_messages %}
             <div class="d-flex mb-3 {% if msg.sender == request.user %}justify-content-end{% else %}justify-content-start{% endif %}">
-                <div class="{% if msg.sender == request.user %}bg-primary text-white{% else %}bg-light{% endif %} rounded-3 px-3 py-2" style="max-width:75%;">
+                <div class="{% if msg.sender == request.user %}chat-bubble-mine{% else %}chat-bubble-other{% endif %} rounded-3 px-3 py-2" style="max-width:75%;">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="fw-bold">
                             {% if msg.sender == request.user %}Ty{% else %}{{ msg.sender.get_full_name|default:msg.sender.username }} (klient){% endif %}
@@ -321,10 +321,10 @@
 </div>
 
 <!-- Notatki CRM -->
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: #1a1a1a; color: #fff;">
         <h5 class="mb-0"><i class="bi bi-journal-text"></i> Notatki CRM — historia kontaktów</h5>
-        <span class="badge bg-light text-dark">{{ notes|length }} notatek</span>
+        <span class="badge bg-white" style="color: #1a1a1a;">{{ notes|length }} notatek</span>
     </div>
     <div class="card-body">
         <!-- Formularz dodawania notatki -->
@@ -348,7 +348,7 @@
                             <textarea name="note_content" class="form-control" rows="3" placeholder="Szczegóły rozmowy, ustalenia, uwagi..." required></textarea>
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-dark">
+                            <button type="submit" class="btn btn-dark" style="background: #1a1a1a; border-color: #1a1a1a;">
                                 <i class="bi bi-plus-circle"></i> Dodaj notatkę
                             </button>
                         </div>
@@ -360,7 +360,7 @@
         <!-- Lista notatek -->
         {% if notes %}
             {% for note in notes %}
-            <div class="card mb-3 border-start border-4 border-primary">
+            <div class="card mb-3 note-card border-start border-4" style="border-color: #7c3aed !important;">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -422,7 +422,7 @@
     height: 12px;
     border-radius: 50%;
     border: 2px solid #fff;
-    box-shadow: 0 0 0 2px #dee2e6;
+    box-shadow: 0 0 0 2px #d4d4d8;
 }
 
 .timeline:before {
@@ -432,7 +432,7 @@
     top: 10px;
     bottom: 20px;
     width: 2px;
-    background: #dee2e6;
+    background: #d4d4d8;
 }
 
 .timeline-content {

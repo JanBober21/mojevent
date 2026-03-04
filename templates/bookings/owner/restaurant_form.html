@@ -5,8 +5,8 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
                 <h4 class="mb-0">
                     {% if editing %}
                     <i class="bi bi-pencil-square"></i> Edytuj firmę
@@ -15,7 +15,7 @@
                     {% endif %}
                 </h4>
             </div>
-            <div class="card-body p-4">
+            <div class="card-body">
                 {% if not editing %}
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> Wypełnij dane swojej firmy. Będzie ona widoczna dla klientów szukających usług.

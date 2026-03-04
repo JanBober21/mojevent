@@ -53,6 +53,9 @@ def home(request):
     return render(request, "bookings/home.html", {
         "featured_restaurants": featured,
         "map_markers_json": json.dumps(markers),
+        "restaurant_count": Restaurant.objects.filter(is_active=True).count(),
+        "booking_count": Booking.objects.count(),
+        "review_count": Review.objects.count(),
     })
 
 

@@ -24,7 +24,7 @@
         <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-outline-primary btn-lg">
             <i class="bi bi-chevron-left"></i>
         </a>
-        <h3 class="mb-0 text-primary">
+        <h3 class="mb-0" style="color: #7c3aed;">
             <i class="bi bi-calendar-month"></i>
             {{ month_name }} {{ year }}
         </h3>
@@ -52,7 +52,7 @@
                 border-left: 1px solid #dee2e6;
             }
             .cal-header {
-                background: #0d6efd;
+                background: #7c3aed;
                 color: white;
                 text-align: center;
                 padding: 10px 4px;
@@ -71,14 +71,14 @@
                 transition: background 0.15s;
             }
             .cal-day:hover {
-                background: #f0f4ff;
+                background: #f5f3ff;
             }
             .cal-day.cal-empty {
-                background: #f8f9fa;
+                background: #fafaf8;
             }
             .cal-day.cal-today {
-                background: #e8f0fe;
-                border: 2px solid #0d6efd;
+                background: #ede9fe;
+                border: 2px solid #7c3aed;
             }
             .cal-day-number {
                 font-weight: 600;
@@ -87,7 +87,7 @@
                 margin-bottom: 4px;
             }
             .cal-today .cal-day-number {
-                color: #0d6efd;
+                color: #7c3aed;
             }
             .cal-event {
                 display: block;

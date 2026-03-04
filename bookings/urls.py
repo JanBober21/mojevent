@@ -38,6 +38,8 @@ urlpatterns = [
     path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),
     path("owner/menu/", views.owner_menu, name="owner_menu"),
     path("owner/atrakcje/", views.owner_attractions, name="owner_attractions"),
+    path("owner/firmy/", views.owner_firms, name="owner_firms"),
+    path("owner/firmy/przelacz/<int:restaurant_id>/", views.owner_switch_firm, name="owner_switch_firm"),
 
     # Menu dla klienta
     path("rezerwacje/<int:pk>/menu/", views.booking_menu_select, name="booking_menu_select"),

@@ -21,7 +21,7 @@ class UserAdmin(BaseUserAdmin):
     def rola(self, obj):
         if obj.is_superuser:
             return format_html('<span style="color:#dc3545;font-weight:bold;">⛑ Administracja</span>')
-        if hasattr(obj, "restaurant_owner"):
+        if obj.restaurant_owners.exists():
             return format_html('<span style="color:#198754;font-weight:bold;">🏪 Firma</span>')
         return format_html('<span style="color:#0d6efd;">👤 Użytkownik</span>')
 
@@ -100,8 +100,8 @@ class ReviewAdmin(admin.ModelAdmin):
 
 @admin.register(RestaurantOwner)
 class RestaurantOwnerAdmin(admin.ModelAdmin):
-    list_display = ["user", "restaurant", "is_main_owner", "created_at"]
-    list_filter = ["is_main_owner", "created_at", "restaurant__city"]
+    list_display = ["user", "restaurant", "role", "created_at"]
+    list_filter = ["role", "created_at", "restaurant__city"]
     search_fields = ["user__username", "user__first_name", "user__last_name", "restaurant__name"]
     autocomplete_fields = ["user", "restaurant"]
     readonly_fields = ["created_at"]

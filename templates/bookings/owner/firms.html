@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Moje firmy — EventBook{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-buildings"></i> Moje firmy</h1>
+        <p class="text-muted fs-5">Zarządzaj swoimi firmami i pracownikami</p>
+    </div>
+    <a href="{% url 'owner_restaurant_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Dodaj firmę
+    </a>
+</div>
+
+{% if not firms_data %}
+<div class="card shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-shop" style="font-size: 3rem; color: #a0a0a0;"></i>
+        <h4 class="mt-3 text-muted">Nie masz jeszcze żadnej firmy</h4>
+        <p class="text-muted">Dodaj swoją pierwszą firmę, aby rozpocząć.</p>
+        <a href="{% url 'owner_restaurant_create' %}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-lg"></i> Dodaj firmę
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% for firm in firms_data %}
+<div class="card shadow-sm mb-4 {% if firm.is_active %}border-primary{% endif %}" style="{% if firm.is_active %}border-width: 2px;{% endif %}">
+    <div class="card-header d-flex justify-content-between align-items-center" style="{% if firm.is_active %}background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;{% endif %}">
+        <div>
+            <h5 class="mb-0">
+                {% if firm.is_active %}<i class="bi bi-check-circle-fill me-1"></i>{% endif %}
+                {{ firm.restaurant.name }}
+                {% if firm.is_active %}<span class="badge bg-light text-dark ms-2" style="font-size: .7rem;">AKTYWNA</span>{% endif %}
+            </h5>
+        </div>
+        <div class="d-flex gap-2">
+            {% if not firm.is_active %}
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="switch">
+                <input type="hidden" name="restaurant_id" value="{{ firm.restaurant.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-arrow-repeat"></i> Przełącz
+                </button>
+            </form>
+            {% endif %}
+            {% if firm.is_active %}
+            <a href="{% url 'owner_dashboard' %}" class="btn btn-sm btn-light">
+                <i class="bi bi-speedometer2"></i> Panel
+            </a>
+            <a href="{% url 'owner_restaurant_edit' %}" class="btn btn-sm btn-light">
+                <i class="bi bi-pencil"></i> Edytuj
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted" style="width: 130px;"><i class="bi bi-geo-alt"></i> Miasto</td>
+                        <td><strong>{{ firm.restaurant.city }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-tag"></i> Typ</td>
+                        <td><strong>{{ firm.restaurant.get_firm_type_display }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><i class="bi bi-person-badge"></i> Twoja rola</td>
+                        <td>
+                            {% if firm.is_owner %}
+                            <span class="badge" style="background: #7c3aed;">Właściciel</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Pracownik</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted mb-2"><i class="bi bi-people"></i> Członkowie firmy</h6>
+                <div class="list-group list-group-flush">
+                    {% for member in firm.members %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                        <div>
+                            <i class="bi bi-person"></i>
+                            {{ member.user.get_full_name|default:member.user.username }}
+                            {% if member.role == "owner" %}
+                            <span class="badge" style="background: #7c3aed; font-size: .6rem;">Właściciel</span>
+                            {% else %}
+                            <span class="badge bg-secondary" style="font-size: .6rem;">Pracownik</span>
+                            {% endif %}
+                        </div>
+                        {% if firm.is_owner and member.role == "worker" %}
+                        <form method="post" class="d-inline" onsubmit="return confirm('Usunąć pracownika z firmy?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove_worker">
+                            <input type="hidden" name="membership_id" value="{{ member.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if firm.is_owner %}
+                <form method="post" class="mt-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_worker">
+                    <input type="hidden" name="restaurant_id" value="{{ firm.restaurant.id }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="worker_username" class="form-control"
+                               placeholder="Nazwa użytkownika pracownika" required>
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-person-plus"></i> Dodaj
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

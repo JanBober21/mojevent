@@ -31,7 +31,7 @@
                         </a>
                     </li>
                     {% if user.is_authenticated %}
-                        {% if user.restaurant_owner %}
+                        {% if is_firm_member %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'owner_dashboard' %}">
                                 <i class="bi bi-speedometer2"></i> Panel firmy
@@ -47,7 +47,7 @@
                                 <i class="bi bi-menu-button-wide"></i> Menu
                             </a>
                         </li>
-                        {% if user.restaurant_owner.restaurant.firm_type == 'attraction' %}
+                        {% if active_restaurant.firm_type == 'attraction' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'owner_attractions' %}">
                                 <i class="bi bi-stars"></i> Atrakcje
@@ -57,6 +57,14 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'owner_restaurant_edit' %}">
                                 <i class="bi bi-pencil-square"></i> Moja firma
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'owner_firms' %}">
+                                <i class="bi bi-buildings"></i> Moje firmy
+                                {% if firm_memberships.count > 1 %}
+                                <span class="badge bg-primary rounded-pill ms-1" style="font-size: .65rem;">{{ firm_memberships.count }}</span>
+                                {% endif %}
                             </a>
                         </li>
                         {% else %}

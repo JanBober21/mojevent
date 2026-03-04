@@ -15,6 +15,35 @@ from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, M
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
+def _get_owner_context(request):
+    """Return (memberships_qs, active_restaurant, active_membership) for the current user.
+
+    Uses session key 'active_restaurant_id' to remember which firm is selected.
+    Returns (None, None, None) when the user has no firm memberships.
+    """
+    memberships = RestaurantOwner.objects.filter(
+        user=request.user, restaurant__isnull=False,
+    ).select_related("restaurant")
+
+    if not memberships.exists():
+        # User has an owner record with restaurant=None (just registered)
+        if RestaurantOwner.objects.filter(user=request.user).exists():
+            return memberships, None, None
+        return None, None, None
+
+    active_id = request.session.get("active_restaurant_id")
+    active_membership = None
+
+    if active_id:
+        active_membership = memberships.filter(restaurant_id=active_id).first()
+
+    if not active_membership:
+        active_membership = memberships.first()
+        request.session["active_restaurant_id"] = active_membership.restaurant_id
+
+    return memberships, active_membership.restaurant, active_membership
+
+
 def _haversine_km(lat1, lon1, lat2, lon2):
     """Oblicz odległość w km między dwoma punktami GPS (Haversine)."""
     R = 6371  # promień Ziemi w km
@@ -202,7 +231,7 @@ def booking_create(request, restaurant_pk):
                     booking.save()
                     # Auto-wyślij wiadomość powitalną od właściciela firmy
                     if restaurant.welcome_message.strip():
-                        owner_qs = restaurant.owners.filter(is_main_owner=True).select_related("user")
+                        owner_qs = restaurant.owners.filter(role="owner").select_related("user")
                         if not owner_qs.exists():
                             owner_qs = restaurant.owners.select_related("user")
                         if owner_qs.exists():
@@ -331,7 +360,7 @@ def owner_register(request):
         form = OwnerRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            RestaurantOwner.objects.create(user=user, restaurant=None)
+            RestaurantOwner.objects.create(user=user, restaurant=None, role="owner")
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, f"Witaj, {user.first_name}! Konto właściciela zostało utworzone. Dodaj teraz swoją firmę.")
             return redirect("owner_restaurant_create")
@@ -370,24 +399,29 @@ def _save_gallery_images(request, restaurant):
 
 @login_required
 def owner_restaurant_create(request):
-    """Dodawanie restauracji przez właściciela."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    """Dodawanie nowej firmy przez właściciela."""
+    # Check user is an owner type at all
+    if not RestaurantOwner.objects.filter(user=request.user).exists():
         messages.error(request, "Nie masz konta właściciela firmy.")
         return redirect("home")
-
-    if owner.restaurant:
-        messages.info(request, "Masz już przypąsaną firmę. Możesz ją edytować.")
-        return redirect("owner_restaurant_edit")
 
     if request.method == "POST":
         form = RestaurantForm(request.POST)
         if form.is_valid():
             restaurant = form.save()
-            owner.restaurant = restaurant
-            owner.save()
+            # Create or update the placeholder membership
+            placeholder = RestaurantOwner.objects.filter(
+                user=request.user, restaurant__isnull=True
+            ).first()
+            if placeholder:
+                placeholder.restaurant = restaurant
+                placeholder.save()
+            else:
+                RestaurantOwner.objects.create(
+                    user=request.user, restaurant=restaurant, role="owner"
+                )
             _save_gallery_images(request, restaurant)
+            request.session["active_restaurant_id"] = restaurant.pk
             messages.success(request, f"Firma '{restaurant.name}' została dodana!")
             return redirect("owner_dashboard")
     else:
@@ -397,14 +431,11 @@ def owner_restaurant_create(request):
 
 @login_required
 def owner_restaurant_edit(request):
-    """Edycja restauracji przez właściciela."""
-    try:
-        owner = request.user.restaurant_owner
-        restaurant = owner.restaurant
-    except RestaurantOwner.DoesNotExist:
+    """Edycja aktywnej firmy."""
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         messages.error(request, "Nie masz konta właściciela firmy.")
         return redirect("home")
-
     if not restaurant:
         messages.info(request, "Najpierw dodaj swoją firmę.")
         return redirect("owner_restaurant_create")
@@ -414,7 +445,7 @@ def owner_restaurant_edit(request):
         if form.is_valid():
             form.save()
             _save_gallery_images(request, restaurant)
-            messages.success(request, "Dane firmy zosta\u0142y zaktualizowane.")
+            messages.success(request, "Dane firmy zostały zaktualizowane.")
             return redirect("owner_dashboard")
     else:
         form = RestaurantForm(instance=restaurant)
@@ -429,13 +460,10 @@ def owner_restaurant_edit(request):
 @login_required
 def owner_dashboard(request):
     """Panel główny właściciela firmy."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         messages.error(request, "Nie masz konta właściciela firmy.")
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         messages.info(request, "Najpierw dodaj swoją firmę.")
         return redirect("owner_restaurant_create")
@@ -480,12 +508,9 @@ def owner_dashboard(request):
 @login_required
 def owner_bookings(request):
     """Lista wszystkich rezerwacji właściciela restauracji."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
     
@@ -509,12 +534,9 @@ def owner_bookings(request):
 @login_required
 def owner_booking_detail(request, booking_id):
     """Szczegóły rezerwacji z opcją zatwierdzania/odrzucania."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
     
@@ -606,12 +628,9 @@ def owner_booking_detail(request, booking_id):
 @login_required
 def owner_booking_agreement(request, booking_id):
     """Wyświetlenie umowy / potwierdzenia dealu — do druku / PDF."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
 
@@ -635,13 +654,10 @@ def owner_booking_agreement(request, booking_id):
 @login_required
 def owner_calendar(request):
     """Kalendarz rezerwacji restauracji — widok miesięczny."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         messages.error(request, "Nie masz uprawnień do zarządzania firmą.")
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
 
@@ -737,12 +753,9 @@ def owner_calendar(request):
 @login_required
 def owner_menu(request):
     """Zarządzanie menu restauracji."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
 
@@ -899,12 +912,9 @@ def booking_menu_select(request, pk):
 @login_required
 def owner_attractions(request):
     """Zarządzanie ofertą atrakcji."""
-    try:
-        owner = request.user.restaurant_owner
-    except RestaurantOwner.DoesNotExist:
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
         return redirect("home")
-
-    restaurant = owner.restaurant
     if not restaurant:
         return redirect("owner_restaurant_create")
 
@@ -973,3 +983,102 @@ def owner_attractions(request):
         "items_by_tag": items_by_tag,
         "tags": tags,
     })
+
+
+# ── Zarządzanie firmami (multi-firma) ──────────────────────────────────────────
+
+@login_required
+def owner_firms(request):
+    """Lista firm użytkownika, przełączanie aktywnej firmy, zarządzanie pracownikami."""
+    if not RestaurantOwner.objects.filter(user=request.user).exists():
+        messages.error(request, "Nie masz konta właściciela firmy.")
+        return redirect("home")
+
+    memberships = RestaurantOwner.objects.filter(
+        user=request.user, restaurant__isnull=False,
+    ).select_related("restaurant")
+
+    active_id = request.session.get("active_restaurant_id")
+
+    # Handle POST actions
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "switch":
+            new_id = request.POST.get("restaurant_id")
+            if memberships.filter(restaurant_id=new_id).exists():
+                request.session["active_restaurant_id"] = int(new_id)
+                messages.success(request, "Przełączono aktywną firmę.")
+            return redirect("owner_firms")
+
+        elif action == "remove_worker":
+            worker_id = request.POST.get("membership_id")
+            # Only owners can remove workers
+            membership_to_delete = RestaurantOwner.objects.filter(
+                id=worker_id, role="worker",
+            ).first()
+            if membership_to_delete:
+                # Verify current user is owner of that restaurant
+                is_owner = RestaurantOwner.objects.filter(
+                    user=request.user,
+                    restaurant=membership_to_delete.restaurant,
+                    role="owner",
+                ).exists()
+                if is_owner:
+                    membership_to_delete.delete()
+                    messages.success(request, "Pracownik usunięty z firmy.")
+            return redirect("owner_firms")
+
+        elif action == "add_worker":
+            restaurant_id = request.POST.get("restaurant_id")
+            worker_username = request.POST.get("worker_username", "").strip()
+            # Verify user is owner of this restaurant
+            is_owner = RestaurantOwner.objects.filter(
+                user=request.user, restaurant_id=restaurant_id, role="owner",
+            ).exists()
+            if is_owner and worker_username:
+                from django.contrib.auth.models import User as UserModel
+                try:
+                    worker_user = UserModel.objects.get(username=worker_username)
+                    _, created = RestaurantOwner.objects.get_or_create(
+                        user=worker_user,
+                        restaurant_id=restaurant_id,
+                        defaults={"role": "worker"},
+                    )
+                    if created:
+                        messages.success(request, f"Dodano pracownika: {worker_user.get_full_name() or worker_username}")
+                    else:
+                        messages.info(request, "Ten użytkownik jest już członkiem firmy.")
+                except UserModel.DoesNotExist:
+                    messages.error(request, f"Nie znaleziono użytkownika: {worker_username}")
+            return redirect("owner_firms")
+
+    # Build context: list of firms with their workers
+    firms_data = []
+    for m in memberships:
+        all_members = RestaurantOwner.objects.filter(
+            restaurant=m.restaurant,
+        ).select_related("user")
+        firms_data.append({
+            "membership": m,
+            "restaurant": m.restaurant,
+            "is_active": m.restaurant_id == active_id,
+            "is_owner": m.role == "owner",
+            "members": all_members,
+        })
+
+    return render(request, "bookings/owner/firms.html", {
+        "firms_data": firms_data,
+        "active_id": active_id,
+    })
+
+
+@login_required
+def owner_switch_firm(request, restaurant_id):
+    """Quick switch active firm (GET-based for navbar dropdown)."""
+    membership = RestaurantOwner.objects.filter(
+        user=request.user, restaurant_id=restaurant_id,
+    ).first()
+    if membership:
+        request.session["active_restaurant_id"] = restaurant_id
+    return redirect(request.GET.get("next", "owner_dashboard"))

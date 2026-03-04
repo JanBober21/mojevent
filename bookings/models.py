@@ -263,12 +263,16 @@ class Review(models.Model):
 
 
 class RestaurantOwner(models.Model):
-    """Właściciel restauracji."""
+    """Powiązanie użytkownika z firmą — rola owner lub worker."""
 
-    user = models.OneToOneField(
+    class Role(models.TextChoices):
+        OWNER = "owner", "Właściciel"
+        WORKER = "worker", "Pracownik"
+
+    user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name="restaurant_owner",
+        related_name="restaurant_owners",
         verbose_name="Użytkownik",
     )
     restaurant = models.ForeignKey(
@@ -279,17 +283,20 @@ class RestaurantOwner(models.Model):
         null=True,
         blank=True,
     )
-    is_main_owner = models.BooleanField("Główny właściciel", default=True)
+    role = models.CharField(
+        "Rola", max_length=10,
+        choices=Role.choices, default=Role.OWNER,
+    )
     created_at = models.DateTimeField("Data dodania", auto_now_add=True)
 
     class Meta:
-        verbose_name = "Właściciel firmy"
-        verbose_name_plural = "Właściciele firm"
+        verbose_name = "Członek firmy"
+        verbose_name_plural = "Członkowie firm"
         unique_together = ["user", "restaurant"]
 
     def __str__(self):
         name = self.restaurant.name if self.restaurant else "(brak firmy)"
-        return f"{self.user.get_full_name() or self.user.username} → {name}"
+        return f"{self.user.get_full_name() or self.user.username} → {name} ({self.get_role_display()})"
 
 
 class BookingNote(models.Model):

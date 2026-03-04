@@ -5,23 +5,27 @@
 {% block content %}
 <h1 class="mb-4"><i class="bi bi-shop"></i> Firmy</h1>
 
-<!-- Zakładki typów firm -->
+<!-- Zakładki typów firm (zachowują parametry wyszukiwania) -->
 <ul class="nav nav-pills mb-4">
     <li class="nav-item">
-        <a class="nav-link {% if not firm_type_filter %}active{% endif %}" href="{% url 'restaurant_list' %}">Wszystkie</a>
+        <a class="nav-link {% if not firm_type_filter %}active{% endif %}"
+           href="{% url 'restaurant_list' %}?{% if request.GET.city %}city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">Wszystkie</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if firm_type_filter == 'venue' %}active{% endif %}" href="{% url 'restaurant_list' %}?firm_type=venue">
+        <a class="nav-link {% if firm_type_filter == 'venue' %}active{% endif %}"
+           href="{% url 'restaurant_list' %}?firm_type=venue{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">
             <i class="bi bi-building"></i> Imprezy w lokalu
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if firm_type_filter == 'catering' %}active{% endif %}" href="{% url 'restaurant_list' %}?firm_type=catering">
+        <a class="nav-link {% if firm_type_filter == 'catering' %}active{% endif %}"
+           href="{% url 'restaurant_list' %}?firm_type=catering{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">
             <i class="bi bi-truck"></i> Catering z dowozem
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {% if firm_type_filter == 'attraction' %}active{% endif %}" href="{% url 'restaurant_list' %}?firm_type=attraction">
+        <a class="nav-link {% if firm_type_filter == 'attraction' %}active{% endif %}"
+           href="{% url 'restaurant_list' %}?firm_type=attraction{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">
             <i class="bi bi-camera-fill"></i> Atrakcje
         </a>
     </li>

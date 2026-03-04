@@ -90,6 +90,12 @@ class UserRegisterForm(UserCreationForm):
         max_length=100,
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
+    phone = forms.CharField(
+        label="Telefon",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "np. +48 123 456 789"}),
+    )
 
     class Meta:
         model = User
@@ -177,6 +183,12 @@ class OwnerRegisterForm(UserCreationForm):
         label="Nazwisko",
         max_length=100,
         widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    phone = forms.CharField(
+        label="Telefon",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "np. +48 123 456 789"}),
     )
 
     class Meta:

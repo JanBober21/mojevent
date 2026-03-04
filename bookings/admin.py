@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.http import HttpResponse
 import csv
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, UserProfile
 
 
 # ── Rozszerzony panel użytkowników z kolumną Rola ─────────────────────────────
@@ -12,8 +12,15 @@ from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, M
 admin.site.unregister(User)
 
 
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = "Profil"
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    inlines = [UserProfileInline]
     list_display = ["username", "first_name", "last_name", "email", "rola", "is_active", "date_joined"]
     list_filter = ["is_superuser", "is_staff", "is_active"]
 

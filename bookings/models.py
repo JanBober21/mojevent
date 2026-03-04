@@ -460,3 +460,22 @@ class BookingMessage(models.Model):
 
     def __str__(self):
         return f"{self.sender.get_full_name() or self.sender.username}: {self.content[:50]}"
+
+
+class UserProfile(models.Model):
+    """Profil użytkownika z dodatkowymi danymi."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="profile",
+        verbose_name="Użytkownik",
+    )
+    phone = models.CharField("Telefon", max_length=20, blank=True)
+
+    class Meta:
+        verbose_name = "Profil użytkownika"
+        verbose_name_plural = "Profile użytkowników"
+
+    def __str__(self):
+        return f"Profil: {self.user.get_full_name() or self.user.username}"

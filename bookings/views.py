@@ -248,13 +248,17 @@ def booking_create(request, restaurant_pk):
                     )
                     return redirect("booking_detail", pk=booking.pk)
     else:
+        initial = {
+            "first_name": request.user.first_name,
+            "last_name": request.user.last_name,
+            "email": request.user.email,
+        }
+        # Auto-fill phone from user profile
+        if hasattr(request.user, "profile") and request.user.profile.phone:
+            initial["phone"] = request.user.profile.phone
         form = BookingForm(
             firm_type=restaurant.firm_type,
-            initial={
-                "first_name": request.user.first_name,
-                "last_name": request.user.last_name,
-                "email": request.user.email,
-            },
+            initial=initial,
         )
 
     return render(request, "bookings/booking_form.html", {
@@ -346,6 +350,12 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
+            # Utwórz profil z telefonem
+            from .models import UserProfile
+            UserProfile.objects.create(
+                user=user,
+                phone=form.cleaned_data.get("phone", ""),
+            )
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, f"Witaj, {user.first_name}! Konto zostało utworzone.")
             return redirect("home")
@@ -360,6 +370,12 @@ def owner_register(request):
         form = OwnerRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
+            # Utwórz profil z telefonem
+            from .models import UserProfile
+            UserProfile.objects.create(
+                user=user,
+                phone=form.cleaned_data.get("phone", ""),
+            )
             RestaurantOwner.objects.create(user=user, restaurant=None, role="owner")
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, f"Witaj, {user.first_name}! Konto właściciela zostało utworzone. Dodaj teraz swoją firmę.")

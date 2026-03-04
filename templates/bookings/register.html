@@ -52,6 +52,14 @@
                             <div class="text-danger small">{{ form.email.errors }}</div>
                             {% endif %}
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Telefon</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                            <div class="text-danger small">{{ form.phone.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted">Zostanie automatycznie uzupełniony przy rezerwacji</small>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Hasło *</label>
                             {{ form.password1 }}

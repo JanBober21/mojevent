@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.http import HttpResponse
 import csv
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage
 
 
 # ── Rozszerzony panel użytkowników z kolumną Rola ─────────────────────────────
@@ -26,8 +26,15 @@ class UserAdmin(BaseUserAdmin):
         return format_html('<span style="color:#0d6efd;">👤 Użytkownik</span>')
 
 
+class RestaurantImageInline(admin.TabularInline):
+    model = RestaurantImage
+    extra = 1
+    fields = ["image", "image_url", "caption", "order"]
+
+
 @admin.register(Restaurant)
 class RestaurantAdmin(admin.ModelAdmin):
+    inlines = [RestaurantImageInline]
     list_display = [
         "name", "firm_type", "city", "max_guests", "price_per_person",
         "has_parking", "has_garden", "has_dance_floor", "is_active",

@@ -11,6 +11,7 @@ from drf_spectacular.types import OpenApiTypes
 
 from .models import (
     Restaurant,
+    RestaurantImage,
     Booking,
     Review,
     MenuItem,
@@ -101,6 +102,18 @@ class AttractionItemSerializer(serializers.ModelSerializer):
 # Restaurant Detail (po Menu i Attraction)
 # ──────────────────────────────────────────────
 
+class RestaurantImageSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RestaurantImage
+        fields = ["id", "url", "caption", "order"]
+
+    @extend_schema_field(OpenApiTypes.URI)
+    def get_url(self, obj):
+        return obj.get_url()
+
+
 class RestaurantDetailSerializer(serializers.ModelSerializer):
     """Pełny widok firmy z udogodnieniami."""
 
@@ -113,6 +126,7 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
     )
     menu_items = serializers.SerializerMethodField()
     attraction_items = serializers.SerializerMethodField()
+    gallery_images = RestaurantImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Restaurant
@@ -126,7 +140,7 @@ class RestaurantDetailSerializer(serializers.ModelSerializer):
             "has_parking", "has_garden", "has_dance_floor", "has_accommodation",
             "latitude", "longitude",
             "is_active", "average_rating",
-            "menu_items", "attraction_items",
+            "menu_items", "attraction_items", "gallery_images",
             "created_at", "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]

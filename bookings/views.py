@@ -3,7 +3,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
-from django.db.models import Q, Avg, Count
+from django.db.models import Q, Avg, Count, Max
 from django.http import JsonResponse
 from django.utils import timezone
 from datetime import datetime, timedelta, date
@@ -11,7 +11,7 @@ import json
 import math
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
 
 
@@ -152,6 +152,7 @@ def restaurant_detail(request, pk):
         "review_form": review_form,
         "menu_by_category": menu_by_category,
         "attraction_items": attraction_items,
+        "gallery_images": restaurant.gallery_images.all(),
     })
 
 
@@ -319,6 +320,34 @@ def owner_register(request):
     return render(request, "bookings/owner_register.html", {"form": form})
 
 
+def _save_gallery_images(request, restaurant):
+    """Save gallery image URLs submitted from the form."""
+    # Delete images marked for removal
+    delete_ids = request.POST.getlist("delete_image")
+    if delete_ids:
+        RestaurantImage.objects.filter(
+            restaurant=restaurant, pk__in=delete_ids
+        ).delete()
+
+    # Add new image URLs
+    new_urls = request.POST.getlist("new_image_url")
+    new_captions = request.POST.getlist("new_image_caption")
+    max_order = (
+        restaurant.gallery_images.aggregate(Max("order"))["order__max"] or 0
+    )
+    for i, url in enumerate(new_urls):
+        url = url.strip()
+        if url:
+            caption = new_captions[i].strip() if i < len(new_captions) else ""
+            max_order += 1
+            RestaurantImage.objects.create(
+                restaurant=restaurant,
+                image_url=url,
+                caption=caption,
+                order=max_order,
+            )
+
+
 @login_required
 def owner_restaurant_create(request):
     """Dodawanie restauracji przez właściciela."""
@@ -338,6 +367,7 @@ def owner_restaurant_create(request):
             restaurant = form.save()
             owner.restaurant = restaurant
             owner.save()
+            _save_gallery_images(request, restaurant)
             messages.success(request, f"Firma '{restaurant.name}' została dodana!")
             return redirect("owner_dashboard")
     else:
@@ -363,11 +393,15 @@ def owner_restaurant_edit(request):
         form = RestaurantForm(request.POST, instance=restaurant)
         if form.is_valid():
             form.save()
-            messages.success(request, "Dane firmy zostały zaktualizowane.")
+            _save_gallery_images(request, restaurant)
+            messages.success(request, "Dane firmy zosta\u0142y zaktualizowane.")
             return redirect("owner_dashboard")
     else:
         form = RestaurantForm(instance=restaurant)
-    return render(request, "bookings/owner/restaurant_form.html", {"form": form, "editing": True, "restaurant": restaurant})
+    return render(request, "bookings/owner/restaurant_form.html", {
+        "form": form, "editing": True, "restaurant": restaurant,
+        "gallery_images": restaurant.gallery_images.all(),
+    })
 
 
 # ── Panel właścicieli restauracji ─────────────────────────────────────────────

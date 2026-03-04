@@ -75,6 +75,59 @@ class Restaurant(models.Model):
         """Return image URL - either uploaded file or external URL."""
         if self.image:
             return self.image.url
+        if self.image_url:
+            return self.image_url
+        # Fallback: first gallery image
+        first = self.gallery_images.first()
+        if first:
+            return first.get_url()
+        return ""
+
+    def get_all_image_urls(self):
+        """Return list of all image URLs (legacy + gallery)."""
+        urls = []
+        legacy = self.get_image_url()
+        if legacy:
+            urls.append(legacy)
+        for img in self.gallery_images.all():
+            url = img.get_url()
+            if url and url not in urls:
+                urls.append(url)
+        return urls
+
+
+class RestaurantImage(models.Model):
+    """Zdjęcie w galerii firmy."""
+
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="gallery_images",
+        verbose_name="Firma",
+    )
+    image = models.ImageField(
+        "Plik zdjęcia", upload_to="restaurants/gallery/", blank=True, null=True,
+    )
+    image_url = models.URLField(
+        "Link do zdjęcia", blank=True,
+        help_text="Alternatywa — URL zewnętrznego zdjęcia",
+    )
+    caption = models.CharField("Podpis", max_length=200, blank=True)
+    order = models.PositiveIntegerField("Kolejność", default=0)
+    created_at = models.DateTimeField("Dodano", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Zdjęcie firmy"
+        verbose_name_plural = "Zdjęcia firmy"
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        label = self.caption or f"Zdjęcie #{self.pk}"
+        return f"{self.restaurant.name} — {label}"
+
+    def get_url(self):
+        if self.image:
+            return self.image.url
         return self.image_url
 
 

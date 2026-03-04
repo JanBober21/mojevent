@@ -93,15 +93,71 @@
                         </div>
                     </div>
 
-                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-image"></i> Zdjęcie</h5>
+                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-image"></i> Zdjęcia</h5>
                     <div class="row g-3">
                         <div class="col-12">
-                            <label class="form-label">Link do zdjęcia (URL)</label>
+                            <label class="form-label">Zdjęcie główne (URL)</label>
                             {{ form.image_url }}
                             {% if form.image_url.errors %}<div class="text-danger small">{{ form.image_url.errors }}</div>{% endif %}
-                            <small class="text-muted">Podaj link do zdjęcia firmy (np. z Imgur, Google Drive).</small>
+                            <small class="text-muted">Link do głównego zdjęcia firmy.</small>
                         </div>
                     </div>
+
+                    <!-- Galeria zdjęć -->
+                    <h6 class="mt-4 mb-2"><i class="bi bi-images"></i> Galeria (dodatkowe zdjęcia)</h6>
+
+                    {% if editing and gallery_images %}
+                    <div class="mb-3">
+                        <p class="text-muted small mb-2">Aktualne zdjęcia w galerii — zaznacz aby usunąć:</p>
+                        <div class="row g-2">
+                            {% for img in gallery_images %}
+                            <div class="col-6 col-md-3">
+                                <div class="position-relative">
+                                    <img src="{{ img.image_url }}" class="img-fluid rounded" style="height:100px;object-fit:cover;width:100%;">
+                                    <div class="form-check mt-1">
+                                        <input class="form-check-input" type="checkbox" name="delete_image" value="{{ img.pk }}" id="del_img_{{ img.pk }}">
+                                        <label class="form-check-label text-danger small" for="del_img_{{ img.pk }}">Usuń</label>
+                                    </div>
+                                    {% if img.caption %}<small class="text-muted d-block">{{ img.caption }}</small>{% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <p class="text-muted small mb-2">Dodaj nowe zdjęcia (podaj linki URL):</p>
+                    <div id="gallery-inputs">
+                        <div class="row g-2 mb-2 gallery-row">
+                            <div class="col-md-8">
+                                <input type="url" name="new_image_url" class="form-control" placeholder="https://... URL zdjęcia">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="text" name="new_image_caption" class="form-control" placeholder="Podpis (opcjonalnie)">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="add-gallery-btn">
+                        <i class="bi bi-plus-circle"></i> Dodaj kolejne zdjęcie
+                    </button>
+                    <script>
+                    document.getElementById('add-gallery-btn').addEventListener('click', function() {
+                        const container = document.getElementById('gallery-inputs');
+                        const row = document.createElement('div');
+                        row.className = 'row g-2 mb-2 gallery-row';
+                        row.innerHTML = `
+                            <div class="col-md-8">
+                                <input type="url" name="new_image_url" class="form-control" placeholder="https://... URL zdjęcia">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <input type="text" name="new_image_caption" class="form-control" placeholder="Podpis (opcjonalnie)">
+                                    <button type="button" class="btn btn-outline-danger" onclick="this.closest('.gallery-row').remove()" title="Usuń wiersz"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>`;
+                        container.appendChild(row);
+                    });
+                    </script>
 
                     <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-cash-stack"></i> Pojemność i cena</h5>
                     <div class="row g-3">

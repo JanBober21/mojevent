@@ -13,9 +13,52 @@
 <div class="row">
     <!-- Kolumna główna -->
     <div class="col-lg-8">
-        {% if restaurant.get_image_url %}
+        {% if gallery_images %}
+        <!-- Karuzela galerii -->
+        <div id="restaurantCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+                {% for img in gallery_images %}
+                <button type="button" data-bs-target="#restaurantCarousel" data-bs-slide-to="{{ forloop.counter0 }}"
+                        {% if forloop.first %}class="active" aria-current="true"{% endif %}
+                        aria-label="Zdjęcie {{ forloop.counter }}"></button>
+                {% endfor %}
+                {% if restaurant.get_image_url %}
+                <button type="button" data-bs-target="#restaurantCarousel" data-bs-slide-to="{{ gallery_images|length }}"
+                        aria-label="Zdjęcie główne"></button>
+                {% endif %}
+            </div>
+            <div class="carousel-inner rounded-3" style="max-height:420px;">
+                {% for img in gallery_images %}
+                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <img src="{{ img.image_url }}" class="d-block w-100"
+                         style="height:420px; object-fit:cover;"
+                         alt="{% if img.caption %}{{ img.caption }}{% else %}{{ restaurant.name }}{% endif %}">
+                    {% if img.caption %}
+                    <div class="carousel-caption d-none d-md-block">
+                        <p class="mb-0 bg-dark bg-opacity-50 rounded px-2 py-1">{{ img.caption }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% if restaurant.get_image_url %}
+                <div class="carousel-item {% if not gallery_images %}active{% endif %}">
+                    <img src="{{ restaurant.get_image_url }}" class="d-block w-100"
+                         style="height:420px; object-fit:cover;" alt="{{ restaurant.name }}">
+                </div>
+                {% endif %}
+            </div>
+            {% if gallery_images|length > 1 or restaurant.get_image_url %}
+            <button class="carousel-control-prev" type="button" data-bs-target="#restaurantCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#restaurantCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+            {% endif %}
+        </div>
+        {% elif restaurant.get_image_url %}
         <img src="{{ restaurant.get_image_url }}" class="img-fluid rounded-3 mb-4 w-100"
-             alt="{{ restaurant.name }}" style="max-height: 400px; object-fit: cover;">
+             alt="{{ restaurant.name }}" style="max-height: 420px; object-fit: cover;">
         {% else %}
         <div class="bg-secondary rounded-3 mb-4 d-flex align-items-center justify-content-center"
              style="height: 300px;">

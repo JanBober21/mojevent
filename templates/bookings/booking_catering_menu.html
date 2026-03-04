@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Menu cateringowe — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'restaurant_list' %}">Firmy</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'restaurant_detail' restaurant.pk %}">{{ restaurant.name }}</a></li>
+        <li class="breadcrumb-item active">Menu cateringowe</li>
+    </ol>
+</nav>
+
+<!-- Nagłówek -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-1"><i class="bi bi-truck"></i> Zamówienie cateringowe</h1>
+        <p class="text-muted fs-5 mb-0">{{ restaurant.name }} — {{ restaurant.city }}</p>
+    </div>
+    <span class="badge bg-info fs-6 px-3 py-2"><i class="bi bi-check-circle"></i> Rezerwacja #{{ booking.pk }}</span>
+</div>
+
+<!-- Podsumowanie rezerwacji (góra) -->
+<div class="card shadow-sm mb-4 border-0" style="background: linear-gradient(135deg, #f0f9ff 0%, #eff6ff 100%);">
+    <div class="card-body py-4">
+        <div class="row g-4 text-center">
+            <!-- Data -->
+            <div class="col-md-3">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center mb-2"
+                         style="width: 52px; height: 52px; background: rgba(59,130,246,0.12);">
+                        <i class="bi bi-calendar3 fs-4" style="color: #3b82f6;"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold" style="font-size: .7rem; letter-spacing: .05em;">Data</small>
+                    <strong class="fs-5">{{ booking.event_date|date:"d.m.Y" }}</strong>
+                </div>
+            </div>
+            <!-- Typ uroczystości -->
+            <div class="col-md-3">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center mb-2"
+                         style="width: 52px; height: 52px; background: rgba(124,58,237,0.12);">
+                        <i class="bi bi-stars fs-4" style="color: #7c3aed;"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold" style="font-size: .7rem; letter-spacing: .05em;">Uroczystość</small>
+                    <strong class="fs-5">{{ booking.get_event_type_display|default:"—" }}</strong>
+                </div>
+            </div>
+            <!-- Liczba gości -->
+            <div class="col-md-3">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center mb-2"
+                         style="width: 52px; height: 52px; background: rgba(245,158,11,0.12);">
+                        <i class="bi bi-people fs-4" style="color: #f59e0b;"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold" style="font-size: .7rem; letter-spacing: .05em;">Liczba gości</small>
+                    <strong class="fs-5">{{ booking.guest_count }} os.</strong>
+                </div>
+            </div>
+            <!-- Dane kontaktowe -->
+            <div class="col-md-3">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center mb-2"
+                         style="width: 52px; height: 52px; background: rgba(16,185,129,0.12);">
+                        <i class="bi bi-person-lines-fill fs-4" style="color: #10b981;"></i>
+                    </div>
+                    <small class="text-muted text-uppercase fw-semibold" style="font-size: .7rem; letter-spacing: .05em;">Kontakt</small>
+                    <strong>{{ booking.first_name }} {{ booking.last_name }}</strong>
+                    <small class="text-muted">{{ booking.phone }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Menu cateringowe -->
+<div class="card shadow-sm border-0">
+    <div class="card-header py-3" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: #fff;">
+        <h4 class="mb-0"><i class="bi bi-menu-button-wide"></i> Wybierz pozycje z menu</h4>
+        <small class="opacity-75">Podaj liczbę porcji dla każdej pozycji. Pozycje z ilością 0 nie zostaną zapisane.</small>
+    </div>
+    <div class="card-body">
+        <form method="post" id="cateringForm">
+            {% csrf_token %}
+
+            {% for group in menu_by_category %}
+            <h5 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2">
+                <span class="badge rounded-pill" style="background: #0891b2;">{{ group.items|length }}</span>
+                {{ group.label }}
+            </h5>
+
+            <div class="row g-3">
+                {% for entry in group.items %}
+                <div class="col-md-6">
+                    <div class="card h-100 border menu-item-card" id="card-{{ entry.item.id }}">
+                        <div class="card-body d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1 me-3">
+                                <h6 class="mb-1 fw-semibold">{{ entry.item.name }}</h6>
+                                {% if entry.item.description %}
+                                <p class="text-muted small mb-2">{{ entry.item.description }}</p>
+                                {% endif %}
+                                <span class="badge bg-light text-dark fs-6">{{ entry.item.price }} zł</span>
+                            </div>
+                            <div class="d-flex flex-column align-items-center" style="min-width: 100px;">
+                                <div class="input-group input-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary qty-minus" data-target="qty_{{ entry.item.id }}">
+                                        <i class="bi bi-dash"></i>
+                                    </button>
+                                    <input type="number" name="qty_{{ entry.item.id }}"
+                                           id="qty_{{ entry.item.id }}"
+                                           class="form-control form-control-sm text-center menu-qty"
+                                           data-price="{{ entry.item.price }}"
+                                           data-card="card-{{ entry.item.id }}"
+                                           value="{{ entry.qty }}" min="0" max="999"
+                                           style="max-width: 55px;">
+                                    <button type="button" class="btn btn-outline-secondary qty-plus" data-target="qty_{{ entry.item.id }}">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted mt-1 item-subtotal" id="sub_{{ entry.item.id }}">0.00 zł</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            {% if not menu_by_category %}
+            <div class="text-center py-5">
+                <i class="bi bi-menu-button-wide fs-1 text-muted"></i>
+                <h5 class="text-muted mt-3">Brak dostępnych pozycji menu</h5>
+                <p class="text-muted">Firma nie dodała jeszcze pozycji do menu.</p>
+            </div>
+            {% endif %}
+
+            <!-- Podsumowanie kosztów (sticky bottom) -->
+            <div class="card mt-4 border-0 shadow" style="background: linear-gradient(135deg, #fafaf8 0%, #f5f3ff 100%);">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h5 class="mb-0"><i class="bi bi-calculator"></i> Podsumowanie</h5>
+                            <small class="text-muted">
+                                Wybrano: <strong id="itemCount">0</strong> pozycji
+                                &middot; <strong id="totalPieces">0</strong> szt.
+                            </small>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            {% if booking.guest_count %}
+                            <small class="text-muted">Koszt na osobę</small>
+                            <div class="fs-5 fw-bold" style="color: #7c3aed;" id="perPerson">0.00 zł</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <small class="text-muted">Łącznie</small>
+                            <div class="fs-3 fw-bold text-primary" id="menuTotal">0.00 zł</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Pomiń wybór menu
+                </a>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-check-lg"></i> Zapisz menu i zakończ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.menu-item-card {
+    transition: border-color .2s, box-shadow .2s;
+}
+.menu-item-card.selected {
+    border-color: #0891b2 !important;
+    box-shadow: 0 0 0 2px rgba(8,145,178,0.15);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.menu-qty');
+    const totalEl = document.getElementById('menuTotal');
+    const countEl = document.getElementById('itemCount');
+    const piecesEl = document.getElementById('totalPieces');
+    const perPersonEl = document.getElementById('perPerson');
+    const guestCount = {{ booking.guest_count|default:"0" }};
+
+    function recalc() {
+        let total = 0;
+        let items = 0;
+        let pieces = 0;
+        inputs.forEach(function(inp) {
+            const qty = parseInt(inp.value) || 0;
+            const price = parseFloat(inp.dataset.price) || 0;
+            const sub = qty * price;
+            total += sub;
+
+            // Update subtotal label
+            const subEl = document.getElementById('sub_' + inp.name.replace('qty_', ''));
+            if (subEl) subEl.textContent = sub.toFixed(2) + ' zł';
+
+            // Highlight card
+            const card = document.getElementById(inp.dataset.card);
+            if (card) {
+                if (qty > 0) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            }
+
+            if (qty > 0) { items++; pieces += qty; }
+        });
+
+        totalEl.textContent = total.toFixed(2) + ' zł';
+        countEl.textContent = items;
+        piecesEl.textContent = pieces;
+        if (perPersonEl && guestCount > 0) {
+            perPersonEl.textContent = (total / guestCount).toFixed(2) + ' zł';
+        }
+    }
+
+    // +/- buttons
+    document.querySelectorAll('.qty-minus').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const inp = document.getElementById(this.dataset.target);
+            const val = parseInt(inp.value) || 0;
+            if (val > 0) inp.value = val - 1;
+            recalc();
+        });
+    });
+    document.querySelectorAll('.qty-plus').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const inp = document.getElementById(this.dataset.target);
+            const val = parseInt(inp.value) || 0;
+            inp.value = val + 1;
+            recalc();
+        });
+    });
+
+    inputs.forEach(function(inp) {
+        inp.addEventListener('input', recalc);
+    });
+
+    recalc();
+});
+</script>
+{% endblock %}

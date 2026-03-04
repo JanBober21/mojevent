@@ -240,6 +240,17 @@ def booking_create(request, restaurant_pk):
                                 sender=owner_qs.first().user,
                                 content=restaurant.welcome_message.strip(),
                             )
+
+                    # Catering → przekieruj do ekranu wyboru menu
+                    if restaurant.firm_type == Restaurant.FirmType.CATERING:
+                        menu_items = MenuItem.objects.filter(restaurant=restaurant, is_visible=True)
+                        if menu_items.exists():
+                            messages.info(
+                                request,
+                                "Rezerwacja złożona! Teraz wybierz pozycje z menu cateringowego.",
+                            )
+                            return redirect("booking_catering_menu", pk=booking.pk)
+
                     label = booking.get_event_type_display() if booking.event_type else "atrakcję"
                     messages.success(
                         request,
@@ -917,6 +928,76 @@ def booking_menu_select(request, pk):
             })
 
     return render(request, "bookings/booking_menu.html", {
+        "booking": booking,
+        "restaurant": restaurant,
+        "menu_by_category": menu_by_category,
+    })
+
+
+@login_required
+def booking_catering_menu(request, pk):
+    """Ekran wyboru menu cateringowego — wyświetlany po złożeniu rezerwacji na catering."""
+    booking = get_object_or_404(Booking, pk=pk, user=request.user)
+    restaurant = booking.restaurant
+
+    if restaurant.firm_type != Restaurant.FirmType.CATERING:
+        return redirect("booking_detail", pk=pk)
+
+    menu_items = MenuItem.objects.filter(restaurant=restaurant, is_visible=True)
+
+    if request.method == "POST":
+        # Zapisz wybory menu
+        booking.menu_selections.all().delete()
+
+        new_selections = []
+        for item in menu_items:
+            qty_str = request.POST.get(f"qty_{item.id}", "0")
+            try:
+                qty = int(qty_str)
+            except ValueError:
+                qty = 0
+            if qty > 0:
+                BookingMenuItem.objects.create(
+                    booking=booking,
+                    menu_item=item,
+                    quantity=qty,
+                )
+                new_selections.append(f"{item.name} x{qty}")
+
+        if new_selections:
+            changes_text = "\n".join(new_selections)
+            BookingNote.objects.create(
+                booking=booking,
+                author=request.user,
+                date=timezone.now().date(),
+                title="Wybór menu cateringowego",
+                content=f"Klient wybrał pozycje z menu:\n{changes_text}",
+            )
+            messages.success(request, "Menu cateringowe zostało zapisane! Rezerwacja złożona.")
+        else:
+            messages.success(request, "Rezerwacja złożona bez wyboru menu.")
+
+        return redirect("booking_detail", pk=pk)
+
+    # Przygotuj dane menu pogrupowane po kategoriach
+    current_selections = {s.menu_item_id: s.quantity for s in booking.menu_selections.all()}
+    categories = MenuItem.Category.choices
+    menu_by_category = []
+    for cat_value, cat_label in categories:
+        items = menu_items.filter(category=cat_value)
+        items_with_qty = []
+        for item in items:
+            items_with_qty.append({
+                "item": item,
+                "qty": current_selections.get(item.id, 0),
+            })
+        if items_with_qty:
+            menu_by_category.append({
+                "label": cat_label,
+                "items": items_with_qty,
+            })
+
+    return render(request, "bookings/booking_catering_menu.html", {
         "booking": booking,
         "restaurant": restaurant,
         "menu_by_category": menu_by_category,

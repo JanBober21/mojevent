@@ -212,6 +212,7 @@ class RestaurantForm(forms.ModelForm):
             "max_guests", "price_per_person",
             "has_parking", "has_garden", "has_dance_floor", "has_accommodation",
             "latitude", "longitude",
+            "welcome_message",
         ]
         widgets = {
             "firm_type": forms.Select(attrs={"class": "form-select", "id": "id_firm_type"}),
@@ -227,6 +228,7 @@ class RestaurantForm(forms.ModelForm):
             "image_url": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://...link do zdjęcia"}),
             "max_guests": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "price_per_person": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),
+            "welcome_message": forms.Textarea(attrs={"class": "form-control", "rows": 5}),
             "has_parking": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "has_garden": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "has_dance_floor": forms.CheckboxInput(attrs={"class": "form-check-input"}),

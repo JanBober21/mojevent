@@ -197,6 +197,17 @@ def booking_create(request, restaurant_pk):
                     )
                 else:
                     booking.save()
+                    # Auto-wyślij wiadomość powitalną od właściciela firmy
+                    if restaurant.welcome_message.strip():
+                        owner_qs = restaurant.owners.filter(is_main_owner=True).select_related("user")
+                        if not owner_qs.exists():
+                            owner_qs = restaurant.owners.select_related("user")
+                        if owner_qs.exists():
+                            BookingMessage.objects.create(
+                                booking=booking,
+                                sender=owner_qs.first().user,
+                                content=restaurant.welcome_message.strip(),
+                            )
                     label = booking.get_event_type_display() if booking.event_type else "atrakcję"
                     messages.success(
                         request,

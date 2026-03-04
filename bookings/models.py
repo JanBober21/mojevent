@@ -53,6 +53,19 @@ class Restaurant(models.Model):
     longitude = models.DecimalField(
         "Długość geogr.", max_digits=9, decimal_places=6, null=True, blank=True
     )
+    welcome_message = models.TextField(
+        "Wiadomość powitalna",
+        blank=True,
+        default=(
+            "Dziękujemy za złożenie rezerwacji! 🎉 "
+            "Cieszymy się, że wybraliście Państwo naszą firmę. "
+            "Twoje zgłoszenie zostało przyjęte — skontaktujemy się z Tobą "
+            "w ciągu 24 godzin, aby potwierdzić szczegóły i odpowiedzieć na "
+            "ewentualne pytania. W razie pilnych spraw zadzwoń do nas. "
+            "Do zobaczenia!"
+        ),
+        help_text="Wiadomość automatycznie wysyłana do klienta po złożeniu rezerwacji.",
+    )
     is_active = models.BooleanField("Aktywna", default=True)
     created_at = models.DateTimeField("Data utworzenia", auto_now_add=True)
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)

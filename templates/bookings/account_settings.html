@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Ustawienia konta — EventBook{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+
+        {% if is_new_google %}
+        <div class="alert alert-info d-flex align-items-start gap-3 mb-4">
+            <i class="bi bi-info-circle fs-4"></i>
+            <div>
+                <strong>Witaj w EventBook!</strong><br>
+                Uzupełnij swoje dane, aby móc wygodnie składać rezerwacje. Twój telefon i miasto zostaną automatycznie wypełnione.
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card shadow-sm">
+            <div class="card-header py-3" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
+                <h4 class="mb-0"><i class="bi bi-gear"></i> Ustawienia konta</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Imię *</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                            <div class="text-danger small">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nazwisko *</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                            <div class="text-danger small">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">E-mail *</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                            <div class="text-danger small">{{ form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon</label>
+                            {{ form.phone }}
+                            {% if form.phone.errors %}
+                            <div class="text-danger small">{{ form.phone.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted">Uzupełniany automatycznie przy rezerwacji</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Miasto</label>
+                            {{ form.city }}
+                            {% if form.city.errors %}
+                            <div class="text-danger small">{{ form.city.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 btn-lg mt-4">
+                        <i class="bi bi-check-lg"></i> Zapisz zmiany
+                    </button>
+                </form>
+
+                <hr>
+                <p class="text-muted text-center mb-0 small">
+                    <i class="bi bi-person-circle"></i> Zalogowano jako <strong>{{ user.username }}</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

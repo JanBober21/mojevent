@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
-from .models import Booking, Review, Restaurant, BookingNote, EventType
+from .models import Booking, Review, Restaurant, BookingNote, EventType, UserProfile
 
 
 class BookingForm(forms.ModelForm):
@@ -106,6 +106,36 @@ class UserRegisterForm(UserCreationForm):
         self.fields["username"].widget.attrs.update({"class": "form-control"})
         self.fields["password1"].widget.attrs.update({"class": "form-control"})
         self.fields["password2"].widget.attrs.update({"class": "form-control"})
+
+
+class UserSettingsForm(forms.Form):
+    """Formularz ustawień konta użytkownika."""
+
+    first_name = forms.CharField(
+        label="Imię",
+        max_length=100,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    last_name = forms.CharField(
+        label="Nazwisko",
+        max_length=100,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    email = forms.EmailField(
+        label="E-mail",
+        widget=forms.EmailInput(attrs={"class": "form-control"}),
+    )
+    phone = forms.CharField(
+        label="Telefon",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "np. +48 123 456 789"}),
+    )
+    city = forms.ChoiceField(
+        label="Miasto",
+        choices=UserProfile.CITY_CHOICES,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
 
 
 class RestaurantSearchForm(forms.Form):

@@ -78,16 +78,27 @@
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <span class="nav-link nav-user">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle nav-user" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <form method="post" action="{% url 'logout' %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm eb-btn-outline-nav mt-1">Wyloguj</button>
-                        </form>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end eb-dropdown">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'account_settings' %}">
+                                    <i class="bi bi-gear"></i> Ustawienia konta
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-box-arrow-right"></i> Wyloguj
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                     {% else %}
                     <li class="nav-item">

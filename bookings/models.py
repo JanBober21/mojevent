@@ -465,6 +465,17 @@ class BookingMessage(models.Model):
 class UserProfile(models.Model):
     """Profil użytkownika z dodatkowymi danymi."""
 
+    CITY_CHOICES = [
+        ("Poznań", "Poznań"),
+        ("Warszawa", "Warszawa"),
+        ("Kraków", "Kraków"),
+        ("Wrocław", "Wrocław"),
+        ("Gdańsk", "Gdańsk"),
+        ("Łódź", "Łódź"),
+        ("Katowice", "Katowice"),
+        ("Szczecin", "Szczecin"),
+    ]
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -472,6 +483,7 @@ class UserProfile(models.Model):
         verbose_name="Użytkownik",
     )
     phone = models.CharField("Telefon", max_length=20, blank=True)
+    city = models.CharField("Miasto", max_length=100, blank=True, default="Poznań")
 
     class Meta:
         verbose_name = "Profil użytkownika"

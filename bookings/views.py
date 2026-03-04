@@ -12,7 +12,7 @@ import math
 import calendar as cal_module
 
 from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage
-from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm
+from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 
 
 def _get_owner_context(request):
@@ -350,6 +350,43 @@ def review_create(request, restaurant_pk):
     return render(request, "bookings/review_form.html", {
         "form": form,
         "restaurant": restaurant,
+    })
+
+
+# ── Ustawienia konta ───────────────────────────────────────────────────────────
+
+@login_required
+def account_settings(request):
+    """Ustawienia konta użytkownika — imię, nazwisko, email, telefon, miasto."""
+    from .models import UserProfile
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        form = UserSettingsForm(request.POST)
+        if form.is_valid():
+            request.user.first_name = form.cleaned_data["first_name"]
+            request.user.last_name = form.cleaned_data["last_name"]
+            request.user.email = form.cleaned_data["email"]
+            request.user.save()
+            profile.phone = form.cleaned_data["phone"]
+            profile.city = form.cleaned_data["city"]
+            profile.save()
+            messages.success(request, "Ustawienia konta zostały zapisane.")
+            next_url = request.GET.get("next", "account_settings")
+            return redirect(next_url)
+    else:
+        form = UserSettingsForm(initial={
+            "first_name": request.user.first_name,
+            "last_name": request.user.last_name,
+            "email": request.user.email,
+            "phone": profile.phone,
+            "city": profile.city or "Poznań",
+        })
+
+    is_new_google = request.GET.get("new") == "1"
+    return render(request, "bookings/account_settings.html", {
+        "form": form,
+        "is_new_google": is_new_google,
     })
 
 

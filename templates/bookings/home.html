@@ -4,7 +4,7 @@
 
 {% block content %}
 <!-- Hero -->
-<div class="hero-section text-center text-white rounded-4 p-5 mb-5">
+<div class="hero-section text-center text-white rounded-4 p-5 mb-0">
     <h1 class="display-4 fw-bold">Zorganizuj wymarzoną uroczystość</h1>
     <p class="lead mb-4">Lokale na imprezy, catering z dowozem i atrakcje — wszystko w jednym miejscu</p>
     <div class="d-flex justify-content-center gap-3">
@@ -34,6 +34,54 @@
         </a>
     </div>
     {% endif %}
+</div>
+
+<!-- Pasek wyszukiwania -->
+<div class="search-bar-wrapper mb-5">
+    <form action="{% url 'restaurant_list' %}" method="get" class="search-bar">
+        <div class="row align-items-center g-0">
+
+            <!-- Miejsce -->
+            <div class="col-12 col-md search-field">
+                <label for="sb-city"><i class="bi bi-geo-alt-fill text-primary"></i> Miejsce</label>
+                <input type="text" id="sb-city" name="city" class="form-control"
+                       placeholder="Poznań, Warszawa..." list="city-suggestions" autocomplete="off">
+                <datalist id="city-suggestions">
+                    <option value="Poznań">
+                    <option value="Warszawa">
+                    <option value="Wrocław">
+                    <option value="Gdańsk">
+                    <option value="Kraków">
+                </datalist>
+            </div>
+
+            <!-- Data -->
+            <div class="col-12 col-md search-field">
+                <label for="sb-date"><i class="bi bi-calendar3 text-primary"></i> Data</label>
+                <input type="date" id="sb-date" name="event_date" class="form-control"
+                       min="{% now 'Y-m-d' %}">
+            </div>
+
+            <!-- Typ -->
+            <div class="col-12 col-md search-field">
+                <label for="sb-type"><i class="bi bi-grid-fill text-primary"></i> Typ</label>
+                <select id="sb-type" name="firm_type" class="form-select">
+                    <option value="">Wszystkie</option>
+                    <option value="venue">Imprezy w lokalu</option>
+                    <option value="catering">Catering z dowozem</option>
+                    <option value="attraction">Atrakcje</option>
+                </select>
+            </div>
+
+            <!-- Przycisk -->
+            <div class="col-12 col-md-auto ps-md-3 pt-3 pt-md-0">
+                <button type="submit" class="btn btn-search w-100">
+                    <i class="bi bi-search me-1"></i> Szukaj
+                </button>
+            </div>
+
+        </div>
+    </form>
 </div>
 
 <!-- 3 główne kategorie -->

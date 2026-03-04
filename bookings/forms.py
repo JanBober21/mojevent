@@ -118,6 +118,11 @@ class RestaurantSearchForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Miasto..."}),
     )
+    event_date = forms.DateField(
+        label="Data",
+        required=False,
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    )
     min_guests = forms.IntegerField(
         label="Min. gości",
         required=False,

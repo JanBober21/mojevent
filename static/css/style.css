@@ -74,6 +74,89 @@ footer {
     }
 }
 
+/* ── Search bar (booking-style) ───────────────────────────────────────────── */
+.search-bar-wrapper {
+    margin-top: -28px;
+    position: relative;
+    z-index: 10;
+}
+
+.search-bar {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 20px 24px;
+}
+
+.search-bar .search-field {
+    border-right: 1px solid #e0e0e0;
+    padding: 0 20px;
+}
+
+.search-bar .search-field:last-of-type {
+    border-right: none;
+}
+
+.search-bar .search-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #555;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.search-bar .search-field .form-control,
+.search-bar .search-field .form-select {
+    border: none;
+    padding: 4px 0;
+    font-size: 1rem;
+    font-weight: 500;
+    box-shadow: none;
+    background: transparent;
+}
+
+.search-bar .search-field .form-control:focus,
+.search-bar .search-field .form-select:focus {
+    box-shadow: none;
+    border: none;
+}
+
+.search-bar .btn-search {
+    background: linear-gradient(135deg, #1a73e8, #6c3faa);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 28px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.search-bar .btn-search:hover {
+    opacity: .9;
+    color: #fff;
+}
+
+@media (max-width: 768px) {
+    .search-bar-wrapper {
+        margin-top: 0;
+    }
+    .search-bar {
+        border-radius: 12px;
+        padding: 16px;
+    }
+    .search-bar .search-field {
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 8px 0;
+    }
+    .search-bar .search-field:last-of-type {
+        border-bottom: none;
+    }
+}
+
 /* Smooth page transitions */
 body {
     min-height: 100vh;

@@ -81,6 +81,12 @@ def restaurant_list(request):
             firm_type_filter = firm_type
         if city:
             qs = qs.filter(city__icontains=city)
+        event_date = form.cleaned_data.get("event_date")
+        if event_date:
+            booked_ids = Booking.objects.filter(
+                event_date=event_date,
+            ).exclude(status="cancelled").values_list("restaurant_id", flat=True)
+            qs = qs.exclude(pk__in=booked_ids)
         if min_guests:
             qs = qs.filter(max_guests__gte=min_guests)
         if max_price:

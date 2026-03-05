@@ -83,6 +83,12 @@ class Restaurant(models.Model):
     sun_open = models.TimeField("Niedziela od", null=True, blank=True)
     sun_close = models.TimeField("Niedziela do", null=True, blank=True)
 
+    show_calendar = models.BooleanField(
+        "Pokaż kalendarz dostępności",
+        default=False,
+        help_text="Wyświetla kalendarz z wolnymi/zajętymi terminami na stronie firmy (tylko Imprezy w lokalu).",
+    )
+
     is_active = models.BooleanField("Aktywna", default=True)
     created_at = models.DateTimeField("Data utworzenia", auto_now_add=True)
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)

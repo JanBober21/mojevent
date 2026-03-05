@@ -371,6 +371,7 @@ class RestaurantForm(forms.ModelForm):
             "fri_open", "fri_close",
             "sat_open", "sat_close",
             "sun_open", "sun_close",
+            "show_calendar",
         ]
         widgets = {
             "firm_type": forms.Select(attrs={"class": "form-select", "id": "id_firm_type"}),
@@ -407,6 +408,7 @@ class RestaurantForm(forms.ModelForm):
             "sat_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "sun_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "sun_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "show_calendar": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def __init__(self, *args, **kwargs):

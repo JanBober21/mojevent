@@ -123,12 +123,28 @@ def restaurant_list(request):
             qs = qs.filter(max_guests__gte=min_guests)
         if max_price:
             qs = qs.filter(price_per_person__lte=max_price)
+        min_price = form.cleaned_data.get("min_price")
+        max_guests_filter = form.cleaned_data.get("max_guests_filter")
+        has_accommodation = form.cleaned_data.get("has_accommodation")
+        min_rating = form.cleaned_data.get("min_rating")
+        has_online_menu = form.cleaned_data.get("has_online_menu")
+
+        if min_price:
+            qs = qs.filter(price_per_person__gte=min_price)
+        if max_guests_filter:
+            qs = qs.filter(max_guests__lte=max_guests_filter)
         if has_parking:
             qs = qs.filter(has_parking=True)
         if has_garden:
             qs = qs.filter(has_garden=True)
         if has_dance_floor:
             qs = qs.filter(has_dance_floor=True)
+        if has_accommodation:
+            qs = qs.filter(has_accommodation=True)
+        if min_rating:
+            qs = qs.filter(avg_rating__gte=int(min_rating))
+        if has_online_menu:
+            qs = qs.filter(menus__is_active=True).distinct()
 
         # Filtrowanie cateringów po promieniu dowozu
         if firm_type == "catering" and user_lat and user_lng:

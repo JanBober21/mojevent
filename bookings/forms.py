@@ -246,6 +246,18 @@ class RestaurantSearchForm(forms.Form):
             attrs={"class": "form-control", "placeholder": "Maks. cena za osobę"}
         ),
     )
+    min_price = forms.DecimalField(
+        label="Cena od",
+        required=False,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "placeholder": "od", "min": 0, "step": "1"}
+        ),
+    )
+    max_guests_filter = forms.IntegerField(
+        label="Maks. gości",
+        required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "placeholder": "Maks. gości"}),
+    )
     has_parking = forms.BooleanField(
         label="Parking",
         required=False,
@@ -258,6 +270,22 @@ class RestaurantSearchForm(forms.Form):
     )
     has_dance_floor = forms.BooleanField(
         label="Parkiet",
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+    has_accommodation = forms.BooleanField(
+        label="Noclegi",
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+    min_rating = forms.ChoiceField(
+        label="Min. ocena",
+        required=False,
+        choices=[("" , "Wszystkie")] + [(str(i), f"{i}+ ★") for i in range(1, 6)],
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    has_online_menu = forms.BooleanField(
+        label="Menu dostępne online",
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )

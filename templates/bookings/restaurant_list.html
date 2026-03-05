@@ -31,159 +31,243 @@
     </li>
 </ul>
 
-<!-- Filtrowanie -->
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3 align-items-end" id="searchForm">
+<div class="row">
+    <!-- ── Sidebar z filtrami ────────────────────────────────────────────── -->
+    <div class="col-lg-3 mb-4">
+        <form method="get" id="searchForm">
             {% if firm_type_filter %}
             <input type="hidden" name="firm_type" value="{{ firm_type_filter }}">
             {% endif %}
+            {{ form.user_lat }}
+            {{ form.user_lng }}
 
-            <div class="col-md-3">
-                <label class="form-label">Miasto</label>
-                {{ form.city }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label"><i class="bi bi-calendar3"></i> Data</label>
-                {{ form.event_date }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Min. gości</label>
-                {{ form.min_guests }}
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Maks. cena/os.</label>
-                {{ form.max_price }}
-            </div>
-            <div class="col-md-3">
-                <div class="form-check">
-                    {{ form.has_parking }}
-                    <label class="form-check-label">Parking</label>
+            <div class="card shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
+                    <h6 class="mb-0"><i class="bi bi-funnel"></i> Filtry</h6>
                 </div>
-                <div class="form-check">
-                    {{ form.has_garden }}
-                    <label class="form-check-label">Ogród</label>
-                </div>
-                <div class="form-check">
-                    {{ form.has_dance_floor }}
-                    <label class="form-check-label">Parkiet</label>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-search"></i> Szukaj
-                </button>
-            </div>
+                <div class="card-body">
 
-            {% if firm_type_filter == 'catering' %}
-            <div class="col-12 mt-3">
-                <div class="alert alert-info d-flex align-items-center gap-3 mb-0 flex-wrap">
-                    <div>
-                        <i class="bi bi-geo-alt-fill fs-4"></i>
+                    <!-- Miasto -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-geo-alt"></i> Miasto</label>
+                        {{ form.city }}
                     </div>
-                    <div class="flex-grow-1">
-                        <strong>Filtruj po lokalizacji dowozu</strong><br>
-                        <small>Udostępnij swoją lokalizację, aby znaleźć catering z dowozem w Twojej okolicy.</small>
+
+                    <!-- Data -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-calendar3"></i> Wolny termin</label>
+                        {{ form.event_date }}
                     </div>
-                    <button type="button" class="btn btn-info" id="getLocationBtn">
-                        <i class="bi bi-crosshair"></i> Użyj mojej lokalizacji
+
+                    <!-- Cena za osobę -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-cash-stack"></i> Cena za osobę (zł)</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                {{ form.min_price }}
+                            </div>
+                            <div class="col-6">
+                                {{ form.max_price }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liczba gości (slider) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-people"></i> Liczba gości</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-0">Min.</label>
+                                {{ form.min_guests }}
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-0">Maks.</label>
+                                {{ form.max_guests_filter }}
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <input type="range" class="form-range" min="10" max="500" step="10"
+                                   id="guestsRange" value="{{ form.min_guests.value|default:'10' }}">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">10</small>
+                                <small class="text-muted fw-semibold" id="guestsRangeVal">{{ form.min_guests.value|default:"—" }}</small>
+                                <small class="text-muted">500</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Udogodnienia -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-check2-square"></i> Udogodnienia</label>
+                        <div class="form-check">
+                            {{ form.has_parking }}
+                            <label class="form-check-label" for="id_has_parking">
+                                <i class="bi bi-p-circle"></i> Parking
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.has_garden }}
+                            <label class="form-check-label" for="id_has_garden">
+                                <i class="bi bi-tree"></i> Ogród
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.has_dance_floor }}
+                            <label class="form-check-label" for="id_has_dance_floor">
+                                <i class="bi bi-music-note-beamed"></i> Parkiet
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            {{ form.has_accommodation }}
+                            <label class="form-check-label" for="id_has_accommodation">
+                                <i class="bi bi-house"></i> Noclegi
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Ocena -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-star-fill text-warning"></i> Min. ocena</label>
+                        {{ form.min_rating }}
+                    </div>
+
+                    <!-- Menu online -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.has_online_menu }}
+                            <label class="form-check-label" for="id_has_online_menu">
+                                <i class="bi bi-menu-button-wide"></i> Menu dostępne online
+                            </label>
+                        </div>
+                    </div>
+
+                    {% if firm_type_filter == 'catering' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-crosshair"></i> Lokalizacja dowozu</label>
+                        <button type="button" class="btn btn-outline-info btn-sm w-100" id="getLocationBtn">
+                            <i class="bi bi-geo-alt-fill"></i> Użyj mojej lokalizacji
+                        </button>
+                        <span id="locationStatus" class="small text-muted d-block mt-1"></span>
+                    </div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filtruj
                     </button>
-                    {{ form.user_lat }}
-                    {{ form.user_lng }}
-                    <span id="locationStatus" class="small text-muted"></span>
+                    <a href="{% url 'restaurant_list' %}{% if firm_type_filter %}?firm_type={{ firm_type_filter }}{% endif %}"
+                       class="btn btn-outline-secondary btn-sm w-100 mt-2">
+                        <i class="bi bi-x-circle"></i> Wyczyść filtry
+                    </a>
                 </div>
             </div>
-            {% endif %}
         </form>
     </div>
-</div>
 
-<!-- Lista firm -->
-{% if restaurants %}
-<div class="row g-4">
-    {% for restaurant in restaurants %}
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 shadow-sm restaurant-card">
-            {% if restaurant.get_image_url %}
-            <img src="{{ restaurant.get_image_url }}" class="card-img-top" alt="{{ restaurant.name }}"
-                 style="height: 200px; object-fit: cover;">
-            {% else %}
-            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center"
-                 style="height: 200px;">
-                <i class="bi bi-image text-white fs-1"></i>
-            </div>
-            {% endif %}
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h5 class="card-title mb-0">{{ restaurant.name }}</h5>
-                    <span class="badge
-                        {% if restaurant.firm_type == 'venue' %}bg-danger
-                        {% elif restaurant.firm_type == 'catering' %}bg-info
-                        {% else %}bg-success{% endif %}">
-                        {{ restaurant.get_firm_type_display }}
-                    </span>
-                </div>
-                <p class="text-muted mb-1">
-                    <i class="bi bi-geo-alt"></i> {{ restaurant.address }}, {{ restaurant.city }}
-                </p>
-                {% if restaurant.firm_type == 'attraction' and restaurant.attraction_type %}
-                <p class="mb-1">
-                    <span class="badge bg-light text-dark">
-                        <i class="bi bi-star"></i> {{ restaurant.get_attraction_type_display }}
-                    </span>
-                </p>
-                {% endif %}
-                {% if restaurant.firm_type == 'catering' %}
-                <p class="mb-1">
-                    <span class="badge bg-light text-dark">
-                        <i class="bi bi-truck"></i> Dowóz do {{ restaurant.delivery_radius_km }} km
-                    </span>
-                </p>
-                {% endif %}
-                {% if restaurant.avg_rating %}
-                <p class="mb-1">
-                    <span class="badge bg-warning text-dark">
-                        <i class="bi bi-star-fill"></i> {{ restaurant.avg_rating|floatformat:1 }}
-                    </span>
-                    <small class="text-muted">({{ restaurant.reviews.count }} opinii)</small>
-                </p>
-                {% endif %}
-                <p class="mb-2">
-                    <strong>{{ restaurant.price_per_person }} zł</strong> / osoba
-                    &middot; do <strong>{{ restaurant.max_guests }}</strong> gości
-                </p>
-                <div class="mb-2">
-                    {% if restaurant.has_parking %}<span class="badge bg-light text-dark me-1"><i class="bi bi-p-circle"></i> Parking</span>{% endif %}
-                    {% if restaurant.has_garden %}<span class="badge bg-light text-dark me-1"><i class="bi bi-tree"></i> Ogród</span>{% endif %}
-                    {% if restaurant.has_dance_floor %}<span class="badge bg-light text-dark me-1"><i class="bi bi-music-note-beamed"></i> Parkiet</span>{% endif %}
-                    {% if restaurant.has_accommodation %}<span class="badge bg-light text-dark me-1"><i class="bi bi-house"></i> Noclegi</span>{% endif %}
-                </div>
-            </div>
-            <div class="card-footer bg-transparent">
-                <a href="{% url 'restaurant_detail' restaurant.pk %}" class="btn btn-primary w-100">
-                    Zobacz szczegóły
-                </a>
-            </div>
+    <!-- ── Wyniki ────────────────────────────────────────────────────────── -->
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted">Znaleziono: <strong>{{ restaurants|length }}</strong> firm</span>
         </div>
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="text-center py-5">
-    <i class="bi bi-search fs-1 text-muted"></i>
-    <h4 class="text-muted mt-3">Nie znaleziono firm</h4>
-    <p class="text-muted">Spróbuj zmienić kryteria wyszukiwania.</p>
-</div>
-{% endif %}
 
-{% if firm_type_filter == 'catering' %}
+        {% if restaurants %}
+        <div class="row g-4">
+            {% for restaurant in restaurants %}
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm restaurant-card">
+                    {% if restaurant.get_image_url %}
+                    <img src="{{ restaurant.get_image_url }}" class="card-img-top" alt="{{ restaurant.name }}"
+                         style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center"
+                         style="height: 200px;">
+                        <i class="bi bi-image text-white fs-1"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">{{ restaurant.name }}</h5>
+                            <span class="badge
+                                {% if restaurant.firm_type == 'venue' %}bg-danger
+                                {% elif restaurant.firm_type == 'catering' %}bg-info
+                                {% else %}bg-success{% endif %}">
+                                {{ restaurant.get_firm_type_display }}
+                            </span>
+                        </div>
+                        <p class="text-muted mb-1">
+                            <i class="bi bi-geo-alt"></i> {{ restaurant.address }}, {{ restaurant.city }}
+                        </p>
+                        {% if restaurant.firm_type == 'attraction' and restaurant.attraction_type %}
+                        <p class="mb-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="bi bi-star"></i> {{ restaurant.get_attraction_type_display }}
+                            </span>
+                        </p>
+                        {% endif %}
+                        {% if restaurant.firm_type == 'catering' %}
+                        <p class="mb-1">
+                            <span class="badge bg-light text-dark">
+                                <i class="bi bi-truck"></i> Dowóz do {{ restaurant.delivery_radius_km }} km
+                            </span>
+                        </p>
+                        {% endif %}
+                        {% if restaurant.avg_rating %}
+                        <p class="mb-1">
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-star-fill"></i> {{ restaurant.avg_rating|floatformat:1 }}
+                            </span>
+                            <small class="text-muted">({{ restaurant.reviews.count }} opinii)</small>
+                        </p>
+                        {% endif %}
+                        <p class="mb-2">
+                            <strong>{{ restaurant.price_per_person }} zł</strong> / osoba
+                            &middot; do <strong>{{ restaurant.max_guests }}</strong> gości
+                        </p>
+                        <div class="mb-2">
+                            {% if restaurant.has_parking %}<span class="badge bg-light text-dark me-1"><i class="bi bi-p-circle"></i> Parking</span>{% endif %}
+                            {% if restaurant.has_garden %}<span class="badge bg-light text-dark me-1"><i class="bi bi-tree"></i> Ogród</span>{% endif %}
+                            {% if restaurant.has_dance_floor %}<span class="badge bg-light text-dark me-1"><i class="bi bi-music-note-beamed"></i> Parkiet</span>{% endif %}
+                            {% if restaurant.has_accommodation %}<span class="badge bg-light text-dark me-1"><i class="bi bi-house"></i> Noclegi</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="{% url 'restaurant_detail' restaurant.pk %}" class="btn btn-primary w-100">
+                            Zobacz szczegóły
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-search fs-1 text-muted"></i>
+            <h4 class="text-muted mt-3">Nie znaleziono firm</h4>
+            <p class="text-muted">Spróbuj zmienić kryteria wyszukiwania.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ── Slider gości → pole min_guests ──
+    const slider = document.getElementById('guestsRange');
+    const sliderVal = document.getElementById('guestsRangeVal');
+    const minGuestsInput = document.getElementById('id_min_guests');
+    if (slider && minGuestsInput) {
+        slider.addEventListener('input', function() {
+            minGuestsInput.value = this.value;
+            sliderVal.textContent = this.value;
+        });
+    }
+
+    // ── Geolokalizacja (catering) ──
     const btn = document.getElementById('getLocationBtn');
     const status = document.getElementById('locationStatus');
     const latInput = document.getElementById('user_lat');
     const lngInput = document.getElementById('user_lng');
-
     if (btn) {
         btn.addEventListener('click', function() {
             if (!navigator.geolocation) {
@@ -197,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 lngInput.value = pos.coords.longitude.toFixed(6);
                 status.textContent = 'Lokalizacja pobrana!';
                 document.getElementById('searchForm').submit();
-            }, function(err) {
+            }, function() {
                 status.textContent = 'Nie udało się pobrać lokalizacji.';
                 btn.disabled = false;
             });
@@ -205,5 +289,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-{% endif %}
 {% endblock %}

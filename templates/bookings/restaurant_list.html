@@ -96,7 +96,8 @@
                         </div>
                     </div>
 
-                    <!-- Udogodnienia -->
+                    <!-- Udogodnienia (tylko venue / wszystkie) -->
+                    {% if firm_type_filter != 'catering' and firm_type_filter != 'attraction' %}
                     <div class="mb-3">
                         <label class="form-label fw-semibold"><i class="bi bi-check2-square"></i> Udogodnienia</label>
                         <div class="form-check">
@@ -124,6 +125,7 @@
                             </label>
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Ocena -->
                     <div class="mb-3">

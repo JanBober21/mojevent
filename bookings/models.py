@@ -355,6 +355,38 @@ class SavedMenu(models.Model):
         return f"{self.user} → {self.restaurant.name}"
 
 
+class Menu(models.Model):
+    """Nazwane menu restauracji. Jedno menu jest aktywne (wyświetlane klientom)."""
+
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="menus",
+        verbose_name="Firma",
+    )
+    name = models.CharField("Nazwa menu", max_length=200)
+    is_active = models.BooleanField("Aktualne", default=False)
+    created_at = models.DateTimeField("Utworzono", auto_now_add=True)
+    last_edited_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+        verbose_name="Ostatnio edytowane przez",
+    )
+    last_edited_at = models.DateTimeField("Ostatnia edycja", auto_now=True)
+
+    class Meta:
+        verbose_name = "Menu"
+        verbose_name_plural = "Menu"
+        ordering = ["-is_active", "-created_at"]
+
+    def __str__(self):
+        active = " (aktualne)" if self.is_active else ""
+        return f"{self.name}{active}"
+
+
 class MenuItem(models.Model):
     """Pozycja menu restauracji."""
 
@@ -371,6 +403,14 @@ class MenuItem(models.Model):
         on_delete=models.CASCADE,
         related_name="menu_items",
         verbose_name="Firma",
+    )
+    menu = models.ForeignKey(
+        Menu,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="items",
+        verbose_name="Menu",
     )
     category = models.CharField(
         "Kategoria", max_length=20, choices=Category.choices

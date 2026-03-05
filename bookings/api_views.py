@@ -15,6 +15,7 @@ from .models import (
     Restaurant,
     Booking,
     Review,
+    Menu,
     MenuItem,
     BookingMenuItem,
     AttractionItem,
@@ -266,7 +267,11 @@ class MenuItemViewSet(viewsets.ModelViewSet):
             return MenuItem.objects.none()
         qs = MenuItem.objects.filter(restaurant_id=restaurant_id)
         if self.request.method == "GET" and not self._is_owner(restaurant_id):
-            qs = qs.filter(is_visible=True)
+            # Publiczny dostęp — tylko pozycje z aktywnego menu
+            active_menu = Menu.objects.filter(
+                restaurant_id=restaurant_id, is_active=True,
+            ).first()
+            qs = qs.filter(is_visible=True, menu=active_menu) if active_menu else qs.none()
         return qs
 
     def get_permissions(self):

@@ -13,15 +13,156 @@
     </a>
 </div>
 
+<!-- ════ Lista zapisanych menu ════ -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-collection"></i> Zapisane menu</h5>
+        <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#new-menu-form">
+            <i class="bi bi-plus-lg"></i> Nowe menu
+        </button>
+    </div>
+
+    <!-- Formularz tworzenia nowego menu (ukryty) -->
+    <div class="collapse" id="new-menu-form">
+        <div class="card-body border-bottom bg-light">
+            <form method="post" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_menu">
+                <div class="col-md-8">
+                    <label class="form-label">Nazwa nowego menu</label>
+                    <input type="text" name="menu_name" class="form-control" placeholder="np. Menu letnie 2026" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-plus-circle"></i> Utwórz
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nazwa menu</th>
+                    <th class="text-center">Pozycji</th>
+                    <th>Data utworzenia</th>
+                    <th>Ostatnia edycja</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-end">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in all_menus %}
+                <tr class="{% if m.id == current_menu.id %}table-primary{% endif %}">
+                    <td class="fw-semibold">
+                        <a href="?menu_id={{ m.id }}" class="text-decoration-none">
+                            <i class="bi bi-journal-text me-1"></i>{{ m.name }}
+                        </a>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary">{{ m.item_count }}</span>
+                    </td>
+                    <td class="text-muted">{{ m.created_at|date:"d.m.Y H:i" }}</td>
+                    <td class="text-muted">
+                        {% if m.last_edited_by %}
+                            {{ m.last_edited_by.get_full_name|default:m.last_edited_by.username }}
+                            <br><small>{{ m.last_edited_at|date:"d.m.Y H:i" }}</small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if m.is_active %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktualne</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="?menu_id={{ m.id }}" class="btn btn-sm btn-outline-primary" title="Edytuj">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ════ Edycja wybranego menu ════ -->
+<div class="card shadow-sm mb-4 border-primary">
+    <div class="card-header d-flex justify-content-between align-items-center"
+         style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color:#fff;">
+        <div>
+            <h5 class="mb-0">
+                <i class="bi bi-journal-text"></i>
+                {{ current_menu.name }}
+                {% if current_menu.is_active %}
+                    <span class="badge bg-success ms-2">Aktualne</span>
+                {% endif %}
+            </h5>
+        </div>
+        <div class="d-flex gap-2">
+            {% if not current_menu.is_active %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_active">
+                <input type="hidden" name="menu_id" value="{{ current_menu.id }}">
+                <button type="submit" class="btn btn-sm btn-light">
+                    <i class="bi bi-check-circle"></i> Ustaw jako aktualne
+                </button>
+            </form>
+            {% endif %}
+            <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#rename-menu-form">
+                <i class="bi bi-pencil"></i>
+            </button>
+            {% if not current_menu.is_active %}
+            <form method="post" onsubmit="return confirm('Usunąć menu &quot;{{ current_menu.name }}&quot; i wszystkie jego pozycje?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_menu">
+                <input type="hidden" name="menu_id" value="{{ current_menu.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-light text-danger border-danger">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Zmiana nazwy menu -->
+    <div class="collapse" id="rename-menu-form">
+        <div class="card-body border-bottom bg-light">
+            <form method="post" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="rename_menu">
+                <input type="hidden" name="menu_id" value="{{ current_menu.id }}">
+                <div class="col-md-8">
+                    <label class="form-label small">Nowa nazwa</label>
+                    <input type="text" name="menu_name" class="form-control" value="{{ current_menu.name }}" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-check-lg"></i> Zmień
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Formularz dodawania nowej pozycji -->
 <div class="card shadow-sm mb-4">
     <div class="card-header" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff;">
-        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Dodaj pozycję</h5>
+        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Dodaj pozycję do „{{ current_menu.name }}"</h5>
     </div>
     <div class="card-body">
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="add">
+            <input type="hidden" name="menu_id" value="{{ current_menu.id }}">
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Kategoria</label>
@@ -109,6 +250,7 @@
                             {% csrf_token %}
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="item_id" value="{{ item.id }}">
+                            <input type="hidden" name="menu_id" value="{{ current_menu.id }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -122,6 +264,7 @@
                             {% csrf_token %}
                             <input type="hidden" name="action" value="edit">
                             <input type="hidden" name="item_id" value="{{ item.id }}">
+                            <input type="hidden" name="menu_id" value="{{ current_menu.id }}">
                             <div class="col-md-2">
                                 <label class="form-label small">Kategoria</label>
                                 <select name="category" class="form-select form-select-sm">

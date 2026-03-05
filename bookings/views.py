@@ -11,7 +11,7 @@ import json
 import math
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 
 
@@ -172,6 +172,13 @@ def restaurant_detail(request, pk):
         if items.exists():
             menu_by_category.append({"label": cat_label, "items": items})
 
+    # Czy menu jest zapisane?
+    is_menu_saved = False
+    if request.user.is_authenticated and menu_by_category:
+        is_menu_saved = SavedMenu.objects.filter(
+            user=request.user, restaurant=restaurant
+        ).exists()
+
     # Oferta atrakcji (tylko dla typu attraction)
     attraction_items = []
     if restaurant.firm_type == Restaurant.FirmType.ATTRACTION:
@@ -189,6 +196,7 @@ def restaurant_detail(request, pk):
         "reviews": reviews,
         "review_form": review_form,
         "menu_by_category": menu_by_category,
+        "is_menu_saved": is_menu_saved,
         "attraction_items": attraction_items,
         "gallery_images": restaurant.gallery_images.all(),
     })
@@ -1226,3 +1234,51 @@ def owner_switch_firm(request, restaurant_id):
     if membership:
         request.session["active_restaurant_id"] = restaurant_id
     return redirect(request.GET.get("next", "owner_dashboard"))
+
+
+# ── Zapisane menu ──────────────────────────────────────────────────────────────
+
+@login_required
+def toggle_save_menu(request, restaurant_pk):
+    """Zapisz / usuń menu restauracji z ulubionych."""
+    restaurant = get_object_or_404(Restaurant, pk=restaurant_pk, is_active=True)
+    saved, created = SavedMenu.objects.get_or_create(
+        user=request.user, restaurant=restaurant,
+    )
+    if not created:
+        saved.delete()
+        messages.info(request, "Usunięto menu z zapisanych.")
+    else:
+        messages.success(request, "Zapisano menu!")
+    next_url = request.GET.get("next")
+    if next_url:
+        return redirect(next_url)
+    return redirect("restaurant_detail", pk=restaurant_pk)
+
+
+@login_required
+def saved_menus_list(request):
+    """Lista zapisanych menu użytkownika."""
+    saved = SavedMenu.objects.filter(user=request.user).select_related(
+        "restaurant"
+    )
+    # Wczytaj menu dla każdej firmy
+    entries = []
+    for s in saved:
+        visible_menu = MenuItem.objects.filter(
+            restaurant=s.restaurant, is_visible=True
+        )
+        categories = MenuItem.Category.choices
+        menu_by_category = []
+        for cat_value, cat_label in categories:
+            items = visible_menu.filter(category=cat_value)
+            if items.exists():
+                menu_by_category.append({"label": cat_label, "items": items})
+        entries.append({
+            "saved": s,
+            "restaurant": s.restaurant,
+            "menu_by_category": menu_by_category,
+        })
+    return render(request, "bookings/saved_menus.html", {
+        "entries": entries,
+    })

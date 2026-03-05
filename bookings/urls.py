@@ -45,6 +45,10 @@ urlpatterns = [
     path("rezerwacje/<int:pk>/menu/", views.booking_menu_select, name="booking_menu_select"),
     path("rezerwacje/<int:pk>/catering-menu/", views.booking_catering_menu, name="booking_catering_menu"),
 
+    # Zapisane menu
+    path("zapisane-menu/", views.saved_menus_list, name="saved_menus_list"),
+    path("restauracje/<int:restaurant_pk>/zapisz-menu/", views.toggle_save_menu, name="toggle_save_menu"),
+
     # Konto
     path("konto/", views.account_settings, name="account_settings"),
 

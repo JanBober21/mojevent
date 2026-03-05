@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Moje zapisane menu — EventBook{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="bi bi-bookmark-star"></i> Moje zapisane menu</h1>
+            <p class="text-muted">Przeglądaj menu firm, które Ci się spodobały.</p>
+        </div>
+        <a href="{% url 'restaurant_list' %}" class="btn btn-outline-primary">
+            <i class="bi bi-shop"></i> Szukaj firm
+        </a>
+    </div>
+
+    {% if entries %}
+        {% for entry in entries %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center"
+                 style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
+                <div>
+                    <h5 class="mb-0">
+                        <i class="bi bi-shop"></i> {{ entry.restaurant.name }}
+                    </h5>
+                    <small>
+                        <i class="bi bi-geo-alt"></i> {{ entry.restaurant.city }}
+                        &middot;
+                        {{ entry.restaurant.get_firm_type_display }}
+                    </small>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'restaurant_detail' entry.restaurant.pk %}"
+                       class="btn btn-sm btn-light">
+                        <i class="bi bi-eye"></i> Zobacz firmę
+                    </a>
+                    <a href="{% url 'toggle_save_menu' entry.restaurant.pk %}?next={% url 'saved_menus_list' %}"
+                       class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-trash"></i> Usuń
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if entry.menu_by_category %}
+                    {% for group in entry.menu_by_category %}
+                    <h6 class="text-muted mt-3 mb-2">{{ group.label }}</h6>
+                    <ul class="list-group mb-2">
+                        {% for item in group.items %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ item.name }}</strong>
+                                {% if item.description %}
+                                <br><small class="text-muted">{{ item.description }}</small>
+                                {% endif %}
+                            </div>
+                            <span class="badge bg-primary rounded-pill">{{ item.price }} zł</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        Ta firma nie ma jeszcze opublikowanego menu.
+                    </p>
+                {% endif %}
+            </div>
+            <div class="card-footer text-muted small">
+                <i class="bi bi-clock"></i> Zapisano: {{ entry.saved.created_at|date:"d.m.Y H:i" }}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-bookmark display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">Nie masz jeszcze zapisanych menu</h4>
+            <p class="text-muted">
+                Przeglądaj firmy i kliknij <strong><i class="bi bi-bookmark"></i> Zapisz menu</strong>,
+                aby dodać je do tej listy.
+            </p>
+            <a href="{% url 'restaurant_list' %}" class="btn btn-primary mt-2">
+                <i class="bi bi-search"></i> Szukaj firm
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

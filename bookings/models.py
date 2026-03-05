@@ -328,6 +328,33 @@ class BookingNote(models.Model):
         return f"{self.date} — {self.title}"
 
 
+class SavedMenu(models.Model):
+    """Menu restauracji zapisane przez klienta."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="saved_menus",
+        verbose_name="Użytkownik",
+    )
+    restaurant = models.ForeignKey(
+        "Restaurant",
+        on_delete=models.CASCADE,
+        related_name="saved_by",
+        verbose_name="Firma",
+    )
+    created_at = models.DateTimeField("Zapisano", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Zapisane menu"
+        verbose_name_plural = "Zapisane menu"
+        unique_together = ["user", "restaurant"]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} → {self.restaurant.name}"
+
+
 class MenuItem(models.Model):
     """Pozycja menu restauracji."""
 

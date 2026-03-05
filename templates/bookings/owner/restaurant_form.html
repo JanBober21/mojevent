@@ -234,6 +234,60 @@
                         </div>
                     </div>
 
+                    <!-- Godziny pracy -->
+                    <h5 class="mt-4 mb-3 border-bottom pb-2">
+                        <i class="bi bi-clock"></i> Godziny pracy
+                    </h5>
+                    <p class="text-muted small mb-2">Zostaw puste jeśli w danym dniu firma jest zamknięta.</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:130px;">Dzień</th>
+                                    <th>Od</th>
+                                    <th>Do</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-semibold">Poniedziałek</td>
+                                    <td>{{ form.mon_open }}</td>
+                                    <td>{{ form.mon_close }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Wtorek</td>
+                                    <td>{{ form.tue_open }}</td>
+                                    <td>{{ form.tue_close }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Środa</td>
+                                    <td>{{ form.wed_open }}</td>
+                                    <td>{{ form.wed_close }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Czwartek</td>
+                                    <td>{{ form.thu_open }}</td>
+                                    <td>{{ form.thu_close }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Piątek</td>
+                                    <td>{{ form.fri_open }}</td>
+                                    <td>{{ form.fri_close }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Sobota</td>
+                                    <td>{{ form.sat_open }}</td>
+                                    <td>{{ form.sat_close }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Niedziela</td>
+                                    <td>{{ form.sun_open }}</td>
+                                    <td>{{ form.sun_close }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
                     <!-- Wiadomość powitalna -->
                     <h5 class="mt-4 mb-1 border-bottom pb-2">
                         <i class="bi bi-chat-heart text-primary"></i> Wiadomość powitalna

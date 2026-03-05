@@ -97,6 +97,29 @@
             </div>
         </div>
 
+        <!-- Godziny pracy -->
+        {% if restaurant.has_working_hours %}
+        <div class="mb-4">
+            <h5><i class="bi bi-clock"></i> Godziny pracy</h5>
+            <table class="table table-sm table-borderless mb-0" style="max-width:360px;">
+                <tbody>
+                    {% for h in restaurant.get_working_hours %}
+                    <tr>
+                        <td class="fw-semibold" style="width:130px;">{{ h.label }}</td>
+                        <td>
+                            {% if h.closed %}
+                            <span class="text-muted">Zamknięte</span>
+                            {% else %}
+                            {{ h.open|time:"H:i" }} – {{ h.close|time:"H:i" }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
         <!-- Menu restauracji -->
         {% if menu_by_category %}
         <div class="mb-4">

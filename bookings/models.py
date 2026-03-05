@@ -66,6 +66,23 @@ class Restaurant(models.Model):
         ),
         help_text="Wiadomość automatycznie wysyłana do klienta po złożeniu rezerwacji.",
     )
+
+    # ── Godziny pracy (pon–ndz) ───────────────────────────────────────────
+    mon_open = models.TimeField("Poniedziałek od", null=True, blank=True)
+    mon_close = models.TimeField("Poniedziałek do", null=True, blank=True)
+    tue_open = models.TimeField("Wtorek od", null=True, blank=True)
+    tue_close = models.TimeField("Wtorek do", null=True, blank=True)
+    wed_open = models.TimeField("Środa od", null=True, blank=True)
+    wed_close = models.TimeField("Środa do", null=True, blank=True)
+    thu_open = models.TimeField("Czwartek od", null=True, blank=True)
+    thu_close = models.TimeField("Czwartek do", null=True, blank=True)
+    fri_open = models.TimeField("Piątek od", null=True, blank=True)
+    fri_close = models.TimeField("Piątek do", null=True, blank=True)
+    sat_open = models.TimeField("Sobota od", null=True, blank=True)
+    sat_close = models.TimeField("Sobota do", null=True, blank=True)
+    sun_open = models.TimeField("Niedziela od", null=True, blank=True)
+    sun_close = models.TimeField("Niedziela do", null=True, blank=True)
+
     is_active = models.BooleanField("Aktywna", default=True)
     created_at = models.DateTimeField("Data utworzenia", auto_now_add=True)
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)
@@ -77,6 +94,38 @@ class Restaurant(models.Model):
 
     def __str__(self):
         return f"{self.name} — {self.city}"
+
+    DAYS_OF_WEEK = [
+        ("mon", "Poniedziałek"),
+        ("tue", "Wtorek"),
+        ("wed", "Środa"),
+        ("thu", "Czwartek"),
+        ("fri", "Piątek"),
+        ("sat", "Sobota"),
+        ("sun", "Niedziela"),
+    ]
+
+    def get_working_hours(self):
+        """Return list of dicts: {day, label, open, close, closed}."""
+        hours = []
+        for code, label in self.DAYS_OF_WEEK:
+            h_open = getattr(self, f"{code}_open")
+            h_close = getattr(self, f"{code}_close")
+            hours.append({
+                "day": code,
+                "label": label,
+                "open": h_open,
+                "close": h_close,
+                "closed": h_open is None or h_close is None,
+            })
+        return hours
+
+    def has_working_hours(self):
+        """Return True if at least one day has hours set."""
+        for code, _ in self.DAYS_OF_WEEK:
+            if getattr(self, f"{code}_open") and getattr(self, f"{code}_close"):
+                return True
+        return False
 
     def average_rating(self):
         reviews = self.reviews.all()

@@ -320,6 +320,13 @@ class RestaurantForm(forms.ModelForm):
             "has_parking", "has_garden", "has_dance_floor", "has_accommodation",
             "latitude", "longitude",
             "welcome_message",
+            "mon_open", "mon_close",
+            "tue_open", "tue_close",
+            "wed_open", "wed_close",
+            "thu_open", "thu_close",
+            "fri_open", "fri_close",
+            "sat_open", "sat_close",
+            "sun_open", "sun_close",
         ]
         widgets = {
             "firm_type": forms.Select(attrs={"class": "form-select", "id": "id_firm_type"}),
@@ -342,6 +349,20 @@ class RestaurantForm(forms.ModelForm):
             "has_accommodation": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "latitude": forms.HiddenInput(attrs={"id": "id_latitude"}),
             "longitude": forms.HiddenInput(attrs={"id": "id_longitude"}),
+            "mon_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "mon_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "tue_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "tue_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "wed_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "wed_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "thu_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "thu_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "fri_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "fri_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "sat_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "sat_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "sun_open": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "sun_close": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
         }
 
     def __init__(self, *args, **kwargs):

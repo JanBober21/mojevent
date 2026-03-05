@@ -234,6 +234,8 @@ class Booking(models.Model):
         blank=True,
     )
     event_date = models.DateField("Data uroczystości")
+    event_start_time = models.TimeField("Godzina rozpoczęcia", null=True, blank=True)
+    event_end_time = models.TimeField("Godzina zakończenia", null=True, blank=True)
     guest_count = models.PositiveIntegerField(
         "Liczba gości", validators=[MinValueValidator(1)], null=True, blank=True,
     )

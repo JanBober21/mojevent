@@ -55,6 +55,20 @@
                             <div class="text-danger small">{{ form.event_date.errors }}</div>
                             {% endif %}
                         </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Godzina od</label>
+                            {{ form.event_start_time }}
+                            {% if form.event_start_time.errors %}
+                            <div class="text-danger small">{{ form.event_start_time.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Godzina do</label>
+                            {{ form.event_end_time }}
+                            {% if form.event_end_time.errors %}
+                            <div class="text-danger small">{{ form.event_end_time.errors }}</div>
+                            {% endif %}
+                        </div>
                         {% if not is_attraction %}
                         <div class="col-md-6">
                             <label class="form-label">Liczba gości *</label>

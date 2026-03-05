@@ -65,6 +65,14 @@
                                 <strong>{{ booking.event_date|date:"d.m.Y" }}</strong><br>
                                 <small class="text-muted">{{ booking.event_date|date:"l" }}</small>
                             </p>
+                            {% if booking.event_start_time or booking.event_end_time %}
+                            <p class="mb-0 mt-1">
+                                <i class="bi bi-clock"></i>
+                                {% if booking.event_start_time %}{{ booking.event_start_time|time:"H:i" }}{% endif %}
+                                {% if booking.event_start_time and booking.event_end_time %} – {% endif %}
+                                {% if booking.event_end_time %}{{ booking.event_end_time|time:"H:i" }}{% endif %}
+                            </p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -161,7 +169,7 @@
                 <h5 class="mb-0"><i class="bi bi-calendar-plus"></i> Kalendarz</h5>
             </div>
             <div class="card-body">
-                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ booking.get_event_type_display|urlencode }}+-+{{ restaurant.name|urlencode }}&dates={{ booking.event_date|date:'Ymd' }}T100000/{{ booking.event_date|date:'Ymd' }}T220000&details=Rezerwacja+nr+{{ booking.id }}%0AGości:+{{ booking.guest_count }}%0AKlient:+{{ booking.first_name }}+{{ booking.last_name }}%0ATelefon:+{{ booking.phone }}%0AEmail:+{{ booking.email }}&location={{ restaurant.address|urlencode }},+{{ restaurant.city|urlencode }}&sf=true" target="_blank" class="btn btn-outline-primary w-100">
+                <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text={{ booking.get_event_type_display|urlencode }}+-+{{ restaurant.name|urlencode }}&dates={{ booking.event_date|date:'Ymd' }}T{% if booking.event_start_time %}{{ booking.event_start_time|time:'Hi' }}{% else %}100000{% endif %}00/{{ booking.event_date|date:'Ymd' }}T{% if booking.event_end_time %}{{ booking.event_end_time|time:'Hi' }}{% else %}220000{% endif %}00&details=Rezerwacja+nr+{{ booking.id }}%0AGości:+{{ booking.guest_count }}%0AKlient:+{{ booking.first_name }}+{{ booking.last_name }}%0ATelefon:+{{ booking.phone }}%0AEmail:+{{ booking.email }}&location={{ restaurant.address|urlencode }},+{{ restaurant.city|urlencode }}&sf=true" target="_blank" class="btn btn-outline-primary w-100">
                     <i class="bi bi-google"></i> Dodaj do Google Calendar
                 </a>
             </div>

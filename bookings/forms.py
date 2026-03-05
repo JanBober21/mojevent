@@ -19,6 +19,8 @@ class BookingForm(forms.ModelForm):
         fields = [
             "event_type",
             "event_date",
+            "event_start_time",
+            "event_end_time",
             "guest_count",
             "first_name",
             "last_name",
@@ -28,6 +30,8 @@ class BookingForm(forms.ModelForm):
         ]
         widgets = {
             "event_type": forms.Select(attrs={"class": "form-select"}),
+            "event_start_time": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
+            "event_end_time": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "guest_count": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "first_name": forms.TextInput(attrs={"class": "form-control"}),
             "last_name": forms.TextInput(attrs={"class": "form-control"}),

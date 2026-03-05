@@ -371,10 +371,66 @@ def booking_create(request, restaurant_pk):
             initial=initial,
         )
 
+    # ── Kalendarz dostępności dla formularza rezerwacji ──────────────
+    today = timezone.now().date()
+    try:
+        cal_year = int(request.GET.get("cal_year", today.year))
+        cal_month = int(request.GET.get("cal_month", today.month))
+    except (ValueError, TypeError):
+        cal_year, cal_month = today.year, today.month
+    if (cal_year, cal_month) < (today.year, today.month):
+        cal_year, cal_month = today.year, today.month
+
+    first_day, num_days = cal_module.monthrange(cal_year, cal_month)
+    booked_dates = set(
+        Booking.objects.filter(
+            restaurant=restaurant,
+            event_date__year=cal_year,
+            event_date__month=cal_month,
+        ).exclude(status="cancelled").values_list("event_date", flat=True)
+    )
+    weeks = []
+    week = [None] * first_day
+    for day in range(1, num_days + 1):
+        d = date(cal_year, cal_month, day)
+        is_past = d < today
+        is_booked = d in booked_dates
+        week.append({
+            "day": day,
+            "date": d.isoformat(),
+            "past": is_past,
+            "booked": is_booked,
+            "free": not is_past and not is_booked,
+        })
+        if len(week) == 7:
+            weeks.append(week)
+            week = []
+    if week:
+        week.extend([None] * (7 - len(week)))
+        weeks.append(week)
+
+    cal_prev = None
+    cal_next = None
+    if cal_month == 1:
+        prev_y, prev_m = cal_year - 1, 12
+    else:
+        prev_y, prev_m = cal_year, cal_month - 1
+    if (prev_y, prev_m) >= (today.year, today.month):
+        cal_prev = {"year": prev_y, "month": prev_m}
+    if cal_month == 12:
+        cal_next = {"year": cal_year + 1, "month": 1}
+    else:
+        cal_next = {"year": cal_year, "month": cal_month + 1}
+
     return render(request, "bookings/booking_form.html", {
         "form": form,
         "restaurant": restaurant,
         "is_attraction": is_attraction,
+        "calendar_data": weeks,
+        "cal_year": cal_year,
+        "cal_month": cal_month,
+        "cal_prev": cal_prev,
+        "cal_next": cal_next,
     })
 
 

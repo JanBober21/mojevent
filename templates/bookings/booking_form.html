@@ -38,6 +38,83 @@
                     </div>
                     {% endif %}
 
+                    <!-- ── Sekcja 1: Wybór daty z kalendarzem ── -->
+                    <h6 class="mb-3"><i class="bi bi-calendar-event"></i> Wybierz datę</h6>
+
+                    {% if calendar_data %}
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center py-2"
+                             style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
+                            {% if cal_prev %}
+                            <a href="?cal_year={{ cal_prev.year }}&cal_month={{ cal_prev.month }}"
+                               class="btn btn-sm btn-outline-light"><i class="bi bi-chevron-left"></i></a>
+                            {% else %}
+                            <span style="width:32px;"></span>
+                            {% endif %}
+                            <strong>
+                                {% if cal_month == 1 %}Styczeń{% elif cal_month == 2 %}Luty{% elif cal_month == 3 %}Marzec{% elif cal_month == 4 %}Kwiecień{% elif cal_month == 5 %}Maj{% elif cal_month == 6 %}Czerwiec{% elif cal_month == 7 %}Lipiec{% elif cal_month == 8 %}Sierpień{% elif cal_month == 9 %}Wrzesień{% elif cal_month == 10 %}Październik{% elif cal_month == 11 %}Listopad{% elif cal_month == 12 %}Grudzień{% endif %}
+                                {{ cal_year }}
+                            </strong>
+                            {% if cal_next %}
+                            <a href="?cal_year={{ cal_next.year }}&cal_month={{ cal_next.month }}"
+                               class="btn btn-sm btn-outline-light"><i class="bi bi-chevron-right"></i></a>
+                            {% else %}
+                            <span style="width:32px;"></span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body p-2">
+                            <table class="table table-bordered text-center mb-0" style="table-layout:fixed;">
+                                <thead>
+                                    <tr class="small text-muted">
+                                        <th>Pn</th><th>Wt</th><th>Śr</th><th>Cz</th><th>Pt</th><th>Sb</th><th>Nd</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for week in calendar_data %}
+                                    <tr>
+                                        {% for cell in week %}
+                                        <td style="height:42px; vertical-align:middle; cursor:{% if cell and cell.free %}pointer{% else %}default{% endif %};">
+                                            {% if cell %}
+                                                {% if cell.past %}
+                                                <span class="text-muted">{{ cell.day }}</span>
+                                                {% elif cell.booked %}
+                                                <span class="badge rounded-pill bg-danger" style="min-width:28px;" title="Zajęty">{{ cell.day }}</span>
+                                                {% elif cell.free %}
+                                                <span class="cal-day badge rounded-pill bg-success" style="min-width:28px; cursor:pointer;"
+                                                      data-date="{{ cell.date }}"
+                                                      title="Wolny — kliknij aby wybrać">{{ cell.day }}</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div class="d-flex gap-3 mt-2 small text-muted justify-content-center">
+                                <span><span class="badge rounded-pill bg-success">&nbsp;</span> Wolny</span>
+                                <span><span class="badge rounded-pill bg-danger">&nbsp;</span> Zajęty</span>
+                                <span class="text-muted">— Miniony</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Data {% if is_attraction %}rezerwacji{% else %}uroczystości{% endif %} *</label>
+                            {{ form.event_date }}
+                            {% if form.event_date.errors %}
+                            <div class="text-danger small">{{ form.event_date.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Wybierz datę z kalendarza powyżej lub wpisz ręcznie.</div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- ── Sekcja 2: Szczegóły rezerwacji ── -->
+                    <h6 class="mb-3"><i class="bi bi-info-circle"></i> Szczegóły rezerwacji</h6>
                     <div class="row g-3">
                         {% if not is_attraction %}
                         <div class="col-md-6">
@@ -48,13 +125,6 @@
                             {% endif %}
                         </div>
                         {% endif %}
-                        <div class="col-md-6">
-                            <label class="form-label">Data {% if is_attraction %}rezerwacji{% else %}uroczystości{% endif %} *</label>
-                            {{ form.event_date }}
-                            {% if form.event_date.errors %}
-                            <div class="text-danger small">{{ form.event_date.errors }}</div>
-                            {% endif %}
-                        </div>
                         <div class="col-md-3">
                             <label class="form-label">Godzina od</label>
                             {{ form.event_start_time }}
@@ -144,4 +214,32 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('id_event_date');
+    if (!dateInput) return;
+
+    document.querySelectorAll('.cal-day').forEach(function(badge) {
+        badge.addEventListener('click', function() {
+            const isoDate = this.dataset.date;  // "YYYY-MM-DD"
+            dateInput.value = isoDate;
+
+            // Remove highlight from all
+            document.querySelectorAll('.cal-day').forEach(function(b) {
+                b.classList.remove('bg-primary');
+                b.classList.add('bg-success');
+            });
+            // Highlight selected
+            this.classList.remove('bg-success');
+            this.classList.add('bg-primary');
+
+            // Scroll to date field smoothly
+            dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    });
+});
+</script>
 {% endblock %}

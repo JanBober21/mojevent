@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Menu — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-menu-button-wide"></i> Menu firmy</h1>
+        <p class="text-muted fs-5">{{ restaurant.name }}</p>
+    </div>
+    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Panel
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Formularz tworzenia nowego menu -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Nowe menu</h5>
+        <button class="btn btn-sm btn-success" data-bs-toggle="collapse" data-bs-target="#new-menu-form">
+            <i class="bi bi-plus-lg"></i> Utwórz
+        </button>
+    </div>
+    <div class="collapse" id="new-menu-form">
+        <div class="card-body bg-light">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_menu">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Nazwa menu *</label>
+                        <input type="text" name="menu_name" class="form-control"
+                               placeholder="np. Menu letnie 2026" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Opis</label>
+                        <input type="text" name="menu_description" class="form-control"
+                               placeholder="Krótki opis menu (opcjonalnie)">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-plus-circle"></i> Utwórz
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Lista menu -->
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-collection"></i> Zapisane menu</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nazwa</th>
+                    <th>Opis</th>
+                    <th class="text-center">Pozycji</th>
+                    <th>Data utworzenia</th>
+                    <th>Ostatnia edycja</th>
+                    <th class="text-center">Status</th>
+                    <th class="text-end">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in all_menus %}
+                <tr>
+                    <td class="fw-semibold">
+                        <a href="{% url 'owner_menu_detail' menu_id=m.id %}" class="text-decoration-none">
+                            <i class="bi bi-journal-text me-1"></i>{{ m.name }}
+                        </a>
+                    </td>
+                    <td class="text-muted" style="max-width:250px;">
+                        {{ m.description|truncatewords:12|default:"—" }}
+                    </td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary">{{ m.item_count }}</span>
+                    </td>
+                    <td class="text-muted small">{{ m.created_at|date:"d.m.Y H:i" }}</td>
+                    <td class="text-muted small">
+                        {% if m.last_edited_by %}
+                            {{ m.last_edited_by.get_full_name|default:m.last_edited_by.username }}
+                            <br>{{ m.last_edited_at|date:"d.m.Y H:i" }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if m.is_active %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aktualne</span>
+                        {% else %}
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="set_active">
+                                <input type="hidden" name="menu_id" value="{{ m.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-success" title="Ustaw jako aktualne">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'owner_menu_detail' menu_id=m.id %}"
+                               class="btn btn-outline-primary" title="Edytuj">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="post" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="copy_menu">
+                                <input type="hidden" name="menu_id" value="{{ m.id }}">
+                                <button type="submit" class="btn btn-outline-secondary" title="Kopiuj menu">
+                                    <i class="bi bi-copy"></i>
+                                </button>
+                            </form>
+                            {% if not m.is_active %}
+                            <form method="post" class="d-inline"
+                                  onsubmit="return confirm('Usunąć menu „{{ m.name }}" i wszystkie jego pozycje?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_menu">
+                                <input type="hidden" name="menu_id" value="{{ m.id }}">
+                                <button type="submit" class="btn btn-outline-danger" title="Usuń">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Brak menu. Utwórz pierwsze menu powyżej.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

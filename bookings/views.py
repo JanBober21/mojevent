@@ -853,15 +853,116 @@ def owner_calendar(request):
 
 @login_required
 def owner_menu(request):
-    """Zarządzanie menu restauracji (wiele menu)."""
+    """Lista menu restauracji."""
     memberships, restaurant, membership = _get_owner_context(request)
     if memberships is None:
         return redirect("home")
     if not restaurant:
         return redirect("owner_restaurant_create")
 
+    all_menus = Menu.objects.filter(restaurant=restaurant).annotate(
+        item_count=Count("items"),
+    ).select_related("last_edited_by")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        # ── Nowe menu ──
+        if action == "create_menu":
+            menu_name = request.POST.get("menu_name", "").strip()
+            menu_desc = request.POST.get("menu_description", "").strip()
+            if menu_name:
+                new_menu = Menu.objects.create(
+                    restaurant=restaurant,
+                    name=menu_name,
+                    description=menu_desc,
+                    last_edited_by=request.user,
+                )
+                messages.success(request, f'Utworzono menu „{menu_name}".')
+                return redirect("owner_menu_detail", menu_id=new_menu.id)
+            else:
+                messages.error(request, "Podaj nazwę menu.")
+
+        # ── Ustaw jako aktualne ──
+        elif action == "set_active":
+            menu_id = request.POST.get("menu_id")
+            menu_obj = Menu.objects.filter(id=menu_id, restaurant=restaurant).first()
+            if menu_obj:
+                Menu.objects.filter(restaurant=restaurant).update(is_active=False)
+                menu_obj.is_active = True
+                menu_obj.save(update_fields=["is_active"])
+                messages.success(request, f'Menu „{menu_obj.name}" jest teraz aktualnym menu.')
+
+        # ── Kopiuj menu ──
+        elif action == "copy_menu":
+            src_id = request.POST.get("menu_id")
+            src = Menu.objects.filter(id=src_id, restaurant=restaurant).first()
+            if src:
+                new_menu = Menu.objects.create(
+                    restaurant=restaurant,
+                    name=f"Kopia {src.name}",
+                    description=src.description,
+                    last_edited_by=request.user,
+                )
+                # Skopiuj pozycje
+                for item in MenuItem.objects.filter(menu=src):
+                    MenuItem.objects.create(
+                        restaurant=restaurant,
+                        menu=new_menu,
+                        category=item.category,
+                        name=item.name,
+                        description=item.description,
+                        price=item.price,
+                        is_visible=item.is_visible,
+                        order=item.order,
+                    )
+                messages.success(request, f'Utworzono kopię menu „{src.name}" ({new_menu.items.count()} pozycji).')
+                return redirect("owner_menu_detail", menu_id=new_menu.id)
+
+        # ── Usuń menu ──
+        elif action == "delete_menu":
+            menu_id = request.POST.get("menu_id")
+            menu_obj = Menu.objects.filter(id=menu_id, restaurant=restaurant).first()
+            if menu_obj:
+                if menu_obj.is_active:
+                    messages.error(request, "Nie można usunąć aktualnego menu. Najpierw ustaw inne jako aktualne.")
+                else:
+                    name = menu_obj.name
+                    menu_obj.delete()
+                    messages.success(request, f'Usunięto menu „{name}".')
+
+        return redirect("owner_menu")
+
+    # Jeśli brak menu — utwórz domyślne
+    if not all_menus.exists():
+        Menu.objects.create(
+            restaurant=restaurant,
+            name="Menu główne",
+            is_active=True,
+            last_edited_by=request.user,
+        )
+        all_menus = Menu.objects.filter(restaurant=restaurant).annotate(
+            item_count=Count("items"),
+        ).select_related("last_edited_by")
+
+    return render(request, "bookings/owner/menu_list.html", {
+        "restaurant": restaurant,
+        "all_menus": all_menus,
+    })
+
+
+@login_required
+def owner_menu_detail(request, menu_id):
+    """Szczegóły i edycja konkretnego menu."""
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
+        return redirect("home")
+    if not restaurant:
+        return redirect("owner_restaurant_create")
+
+    current_menu = get_object_or_404(Menu, id=menu_id, restaurant=restaurant)
+
     def _upsert_template(category, name, price):
-        """Zapisz / zaktualizuj pozycje w globalnym katalogu podpowiedzi."""
         try:
             tpl, created = MenuItemTemplate.objects.get_or_create(
                 category=category, name=name,
@@ -874,80 +975,40 @@ def owner_menu(request):
         except Exception:
             pass
 
-    def _touch_menu(menu_obj):
-        """Zaznacz kto ostatnio edytował menu."""
-        menu_obj.last_edited_by = request.user
-        menu_obj.save(update_fields=["last_edited_by", "last_edited_at"])
-
-    # --- Pobierz / utwórz bieżące menu ---
-    all_menus = Menu.objects.filter(restaurant=restaurant).annotate(
-        item_count=Count("items"),
-    ).select_related("last_edited_by")
-
-    # Wybrane menu (z GET param lub aktywne)
-    selected_menu_id = request.GET.get("menu_id") or request.POST.get("menu_id")
-    current_menu = None
-    if selected_menu_id:
-        current_menu = all_menus.filter(id=selected_menu_id).first()
-    if not current_menu:
-        current_menu = all_menus.filter(is_active=True).first()
-    if not current_menu:
-        # Brak żadnego menu — utwórz domyślne
-        current_menu = Menu.objects.create(
-            restaurant=restaurant,
-            name="Menu główne",
-            is_active=True,
-            last_edited_by=request.user,
-        )
-        all_menus = Menu.objects.filter(restaurant=restaurant).annotate(
-            item_count=Count("items"),
-        ).select_related("last_edited_by")
+    def _touch():
+        current_menu.last_edited_by = request.user
+        current_menu.save(update_fields=["last_edited_by", "last_edited_at"])
 
     if request.method == "POST":
         action = request.POST.get("action")
 
-        # ── Nowe menu ──
-        if action == "create_menu":
-            menu_name = request.POST.get("menu_name", "").strip()
-            if menu_name:
-                new_menu = Menu.objects.create(
-                    restaurant=restaurant,
-                    name=menu_name,
-                    last_edited_by=request.user,
-                )
-                messages.success(request, f'Utworzono menu "{menu_name}".')
-                return redirect(f"{request.path}?menu_id={new_menu.id}")
-            else:
-                messages.error(request, "Podaj nazwę menu.")
-                return redirect(request.get_full_path())
-
         # ── Ustaw jako aktualne ──
-        elif action == "set_active":
+        if action == "set_active":
             Menu.objects.filter(restaurant=restaurant).update(is_active=False)
             current_menu.is_active = True
             current_menu.save(update_fields=["is_active"])
-            messages.success(request, f'Menu "{current_menu.name}" jest teraz aktualnym menu.')
-            return redirect(f"{request.path}?menu_id={current_menu.id}")
+            messages.success(request, f'Menu „{current_menu.name}" jest teraz aktualnym menu.')
 
-        # ── Zmień nazwę menu ──
-        elif action == "rename_menu":
+        # ── Zmień nazwę / opis ──
+        elif action == "edit_meta":
             new_name = request.POST.get("menu_name", "").strip()
+            new_desc = request.POST.get("menu_description", "").strip()
             if new_name:
                 current_menu.name = new_name
-                current_menu.save(update_fields=["name"])
-                _touch_menu(current_menu)
-                messages.success(request, "Zmieniono nazwę menu.")
-            return redirect(f"{request.path}?menu_id={current_menu.id}")
+                current_menu.description = new_desc
+                current_menu.save(update_fields=["name", "description"])
+                _touch()
+                messages.success(request, "Zaktualizowano dane menu.")
 
         # ── Usuń menu ──
         elif action == "delete_menu":
             if current_menu.is_active:
-                messages.error(request, "Nie można usunąć aktualnego menu. Najpierw ustaw inne menu jako aktualne.")
+                messages.error(request, "Nie można usunąć aktualnego menu. Najpierw ustaw inne jako aktualne.")
             else:
                 name = current_menu.name
                 current_menu.delete()
-                messages.success(request, f'Usunięto menu "{name}".')
-            return redirect("owner_menu")
+                messages.success(request, f'Usunięto menu „{name}".')
+                return redirect("owner_menu")
 
         # ── Dodaj pozycję ──
         elif action == "add":
@@ -968,18 +1029,17 @@ def owner_menu(request):
                         is_visible=is_visible,
                     )
                     _upsert_template(category, name, price)
-                    _touch_menu(current_menu)
+                    _touch()
                     messages.success(request, f"Dodano: {name}")
                 except Exception:
                     messages.error(request, "Błąd przy dodawaniu pozycji.")
             else:
                 messages.error(request, "Podaj nazwę i kategorię.")
-            return redirect(f"{request.path}?menu_id={current_menu.id}")
 
         # ── Edytuj pozycję ──
         elif action == "edit":
             item_id = request.POST.get("item_id")
-            item = MenuItem.objects.filter(id=item_id, restaurant=restaurant).first()
+            item = MenuItem.objects.filter(id=item_id, menu=current_menu).first()
             if item:
                 item.category = request.POST.get("category", item.category)
                 item.name = request.POST.get("name", item.name).strip()
@@ -988,27 +1048,23 @@ def owner_menu(request):
                 item.is_visible = request.POST.get("is_visible") == "on"
                 item.save()
                 _upsert_template(item.category, item.name, item.price)
-                _touch_menu(current_menu)
+                _touch()
                 messages.success(request, f"Zaktualizowano: {item.name}")
-            return redirect(f"{request.path}?menu_id={current_menu.id}")
 
         # ── Usuń pozycję ──
         elif action == "delete":
             item_id = request.POST.get("item_id")
-            MenuItem.objects.filter(id=item_id, restaurant=restaurant).delete()
-            _touch_menu(current_menu)
+            MenuItem.objects.filter(id=item_id, menu=current_menu).delete()
+            _touch()
             messages.success(request, "Pozycja usunięta.")
-            return redirect(f"{request.path}?menu_id={current_menu.id}")
 
-        return redirect(f"{request.path}?menu_id={current_menu.id}")
+        return redirect("owner_menu_detail", menu_id=current_menu.id)
 
-    # Grupuj pozycje wg kategorii — tylko z bieżącego menu
+    # Grupuj pozycje wg kategorii
     categories = MenuItem.Category.choices
     menu_by_category = []
     for cat_value, cat_label in categories:
-        items = MenuItem.objects.filter(
-            restaurant=restaurant, menu=current_menu, category=cat_value,
-        )
+        items = MenuItem.objects.filter(menu=current_menu, category=cat_value)
         menu_by_category.append({
             "value": cat_value,
             "label": cat_label,
@@ -1016,11 +1072,10 @@ def owner_menu(request):
             "count": items.count(),
         })
 
-    return render(request, "bookings/owner/menu.html", {
+    return render(request, "bookings/owner/menu_detail.html", {
         "restaurant": restaurant,
         "menu_by_category": menu_by_category,
         "categories": categories,
-        "all_menus": all_menus,
         "current_menu": current_menu,
     })
 

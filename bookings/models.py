@@ -365,6 +365,7 @@ class Menu(models.Model):
         verbose_name="Firma",
     )
     name = models.CharField("Nazwa menu", max_length=200)
+    description = models.TextField("Opis", blank=True, default="")
     is_active = models.BooleanField("Aktualne", default=False)
     created_at = models.DateTimeField("Utworzono", auto_now_add=True)
     last_edited_by = models.ForeignKey(

@@ -37,6 +37,7 @@ urlpatterns = [
     path("owner/restauracja/dodaj/", views.owner_restaurant_create, name="owner_restaurant_create"),
     path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),
     path("owner/menu/", views.owner_menu, name="owner_menu"),
+    path("owner/menu/<int:menu_id>/", views.owner_menu_detail, name="owner_menu_detail"),
     path("owner/atrakcje/", views.owner_attractions, name="owner_attractions"),
     path("owner/firmy/", views.owner_firms, name="owner_firms"),
     path("owner/firmy/przelacz/<int:restaurant_id>/", views.owner_switch_firm, name="owner_switch_firm"),

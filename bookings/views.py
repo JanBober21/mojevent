@@ -357,9 +357,9 @@ def review_create(request, restaurant_pk):
 
 @login_required
 def login_redirect_view(request):
-    """Przekieruj po logowaniu — firma → rezerwacje, klient → strona główna."""
+    """Przekieruj po logowaniu — firma → panel firmy, klient → strona główna."""
     if RestaurantOwner.objects.filter(user=request.user, restaurant__isnull=False).exists():
-        return redirect("owner_bookings")
+        return redirect("owner_dashboard")
     return redirect("home")
 
 

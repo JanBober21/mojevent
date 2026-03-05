@@ -49,6 +49,9 @@ urlpatterns = [
     path("zapisane-menu/", views.saved_menus_list, name="saved_menus_list"),
     path("restauracje/<int:restaurant_pk>/zapisz-menu/", views.toggle_save_menu, name="toggle_save_menu"),
 
+    # API
+    path("api/menu-suggestions/", views.menu_suggestions_api, name="menu_suggestions_api"),
+
     # Konto
     path("konto/", views.account_settings, name="account_settings"),
 

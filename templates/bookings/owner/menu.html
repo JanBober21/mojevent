@@ -25,7 +25,7 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Kategoria</label>
-                    <select name="category" class="form-select" required>
+                    <select name="category" id="add-category-select" class="form-select" required>
                         {% for value, label in categories %}
                         <option value="{{ value }}">{{ label }}</option>
                         {% endfor %}
@@ -33,7 +33,12 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Nazwa</label>
-                    <input type="text" name="name" class="form-control" required placeholder="np. Żurek">
+                    <div class="position-relative">
+                        <input type="text" name="name" id="add-name-input" class="form-control"
+                               required placeholder="np. Żurek" autocomplete="off">
+                        <div id="name-suggestions" class="list-group position-absolute w-100 shadow-sm"
+                             style="z-index:1050; max-height:220px; overflow-y:auto; display:none;"></div>
+                    </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Opis</label>
@@ -41,7 +46,8 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Cena (zł)</label>
-                    <input type="number" name="price" class="form-control" step="0.01" min="0" value="0.00" required>
+                    <input type="number" name="price" id="add-price-input" class="form-control"
+                           step="0.01" min="0" value="0.00" required>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
                     <div class="form-check">
@@ -165,4 +171,66 @@
     {% endif %}
 </div>
 {% endfor %}
+
+<!-- Autocomplete podpowiedzi menu -->
+<script>
+(function() {
+    var nameInput = document.getElementById('add-name-input');
+    var catSelect = document.getElementById('add-category-select');
+    var priceInput = document.getElementById('add-price-input');
+    var sugBox = document.getElementById('name-suggestions');
+    var debounce = null;
+
+    function fetchSuggestions() {
+        var q = nameInput.value.trim();
+        if (q.length < 2) { sugBox.style.display = 'none'; return; }
+        var cat = catSelect.value;
+        var url = '/api/menu-suggestions/?q=' + encodeURIComponent(q) + '&category=' + encodeURIComponent(cat);
+        fetch(url, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.length) { sugBox.style.display = 'none'; return; }
+                sugBox.innerHTML = '';
+                data.forEach(function(item) {
+                    var a = document.createElement('a');
+                    a.href = '#';
+                    a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2';
+                    a.innerHTML = '<span>' + escHtml(item.name) + '</span>' +
+                        '<span class="badge bg-primary rounded-pill">' + item.last_price.toFixed(2) + ' zl</span>';
+                    a.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        nameInput.value = item.name;
+                        priceInput.value = item.last_price.toFixed(2);
+                        sugBox.style.display = 'none';
+                    });
+                    sugBox.appendChild(a);
+                });
+                sugBox.style.display = 'block';
+            });
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    nameInput.addEventListener('input', function() {
+        clearTimeout(debounce);
+        debounce = setTimeout(fetchSuggestions, 250);
+    });
+    nameInput.addEventListener('focus', function() {
+        if (nameInput.value.trim().length >= 2) fetchSuggestions();
+    });
+    catSelect.addEventListener('change', function() {
+        if (nameInput.value.trim().length >= 2) fetchSuggestions();
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!sugBox.contains(e.target) && e.target !== nameInput) {
+            sugBox.style.display = 'none';
+        }
+    });
+})();
+</script>
 {% endblock %}

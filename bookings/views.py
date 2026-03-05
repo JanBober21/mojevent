@@ -11,7 +11,7 @@ import json
 import math
 import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 
 
@@ -841,6 +841,20 @@ def owner_menu(request):
     if not restaurant:
         return redirect("owner_restaurant_create")
 
+    def _upsert_template(category, name, price):
+        """Zapisz / zaktualizuj pozycje w globalnym katalogu podpowiedzi."""
+        try:
+            tpl, created = MenuItemTemplate.objects.get_or_create(
+                category=category, name=name,
+                defaults={"last_price": price},
+            )
+            if not created:
+                tpl.last_price = price
+                tpl.usage_count = tpl.usage_count + 1
+                tpl.save(update_fields=["last_price", "usage_count", "updated_at"])
+        except Exception:
+            pass  # nie blokuj zapisu menu z powodu szablonu
+
     if request.method == "POST":
         action = request.POST.get("action")
 
@@ -860,6 +874,7 @@ def owner_menu(request):
                         price=price,
                         is_visible=is_visible,
                     )
+                    _upsert_template(category, name, price)
                     messages.success(request, f"Dodano: {name}")
                 except Exception:
                     messages.error(request, "Błąd przy dodawaniu pozycji.")
@@ -876,6 +891,7 @@ def owner_menu(request):
                 item.price = request.POST.get("price", item.price)
                 item.is_visible = request.POST.get("is_visible") == "on"
                 item.save()
+                _upsert_template(item.category, item.name, item.price)
                 messages.success(request, f"Zaktualizowano: {item.name}")
 
         elif action == "delete":
@@ -1234,6 +1250,29 @@ def owner_switch_firm(request, restaurant_id):
     if membership:
         request.session["active_restaurant_id"] = restaurant_id
     return redirect(request.GET.get("next", "owner_dashboard"))
+
+
+# ── API podpowiedzi menu ──────────────────────────────────────────────────────
+
+@login_required
+def menu_suggestions_api(request):
+    """Zwraca JSON z podpowiedziami pozycji menu (autocomplete)."""
+    q = request.GET.get("q", "").strip()
+    category = request.GET.get("category", "").strip()
+
+    qs = MenuItemTemplate.objects.all()
+    if category:
+        qs = qs.filter(category=category)
+    if q:
+        qs = qs.filter(name__icontains=q)
+
+    results = list(
+        qs.values("name", "category", "last_price")[:20]
+    )
+    # Konwertuj Decimal na float dla JSON
+    for r in results:
+        r["last_price"] = float(r["last_price"])
+    return JsonResponse(results, safe=False)
 
 
 # ── Zapisane menu ──────────────────────────────────────────────────────────────

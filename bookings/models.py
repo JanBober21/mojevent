@@ -393,6 +393,33 @@ class MenuItem(models.Model):
         return f"{self.get_category_display()}: {self.name} ({self.price} zł)"
 
 
+class MenuItemTemplate(models.Model):
+    """Globalny katalog znanych pozycji menu z ostatnia cena.
+
+    Uzupelniany automatycznie przy kazdym dodaniu / edycji MenuItem.
+    Sluzy jako baza podpowiedzi przy tworzeniu nowego menu.
+    """
+
+    category = models.CharField(
+        "Kategoria", max_length=20, choices=MenuItem.Category.choices,
+    )
+    name = models.CharField("Nazwa", max_length=200)
+    last_price = models.DecimalField(
+        "Ostatnia cena (zl)", max_digits=8, decimal_places=2, default=0,
+    )
+    usage_count = models.PositiveIntegerField("Ile razy uzyta", default=1)
+    updated_at = models.DateTimeField("Ostatnia aktualizacja", auto_now=True)
+
+    class Meta:
+        verbose_name = "Szablon pozycji menu"
+        verbose_name_plural = "Szablony pozycji menu"
+        unique_together = ["category", "name"]
+        ordering = ["-usage_count", "name"]
+
+    def __str__(self):
+        return f"{self.get_category_display()}: {self.name} ({self.last_price} zl)"
+
+
 class BookingMenuItem(models.Model):
     """Wybór pozycji menu przez klienta przy rezerwacji."""
 

@@ -61,7 +61,7 @@
 
                     <!-- Cena za osobę -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold"><i class="bi bi-cash-stack"></i> Cena za osobę (zł)</label>
+                        <label class="form-label fw-semibold"><i class="bi bi-cash-stack"></i> {% if firm_type_filter == 'attraction' %}Cena (zł){% else %}Cena za osobę (zł){% endif %}</label>
                         <div class="row g-2">
                             <div class="col-6">
                                 {{ form.min_price }}
@@ -72,7 +72,8 @@
                         </div>
                     </div>
 
-                    <!-- Liczba gości (slider) -->
+                    <!-- Liczba gości (slider) — nie dla atrakcji -->
+                    {% if firm_type_filter != 'attraction' %}
                     <div class="mb-3">
                         <label class="form-label fw-semibold"><i class="bi bi-people"></i> Liczba gości</label>
                         <div class="row g-2">
@@ -95,6 +96,15 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
+
+                    <!-- Rodzaj atrakcji — tylko dla atrakcji -->
+                    {% if firm_type_filter == 'attraction' %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold"><i class="bi bi-camera-fill"></i> Rodzaj atrakcji</label>
+                        {{ form.attraction_type }}
+                    </div>
+                    {% endif %}
 
                     <!-- Udogodnienia (tylko venue / wszystkie) -->
                     {% if firm_type_filter != 'catering' and firm_type_filter != 'attraction' %}
@@ -127,7 +137,8 @@
                     </div>
                     {% endif %}
 
-                    <!-- Ocena -->
+                    <!-- Ocena — nie dla atrakcji -->
+                    {% if firm_type_filter != 'attraction' %}
                     <div class="mb-3">
                         <label class="form-label fw-semibold"><i class="bi bi-star-fill text-warning"></i> Min. ocena</label>
                         {{ form.min_rating }}
@@ -142,6 +153,7 @@
                             </label>
                         </div>
                     </div>
+                    {% endif %}
 
                     {% if firm_type_filter == 'catering' %}
                     <div class="mb-3">

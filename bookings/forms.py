@@ -289,6 +289,12 @@ class RestaurantSearchForm(forms.Form):
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )
+    attraction_type = forms.ChoiceField(
+        label="Rodzaj atrakcji",
+        required=False,
+        choices=[("" , "Wszystkie")] + list(Restaurant.AttractionType.choices),
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
     # Pola lokalizacji dla cateringu (filtrowanie po promieniu)
     user_lat = forms.DecimalField(
         required=False,

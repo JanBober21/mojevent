@@ -146,6 +146,10 @@ def restaurant_list(request):
         if has_online_menu:
             qs = qs.filter(menus__is_active=True).distinct()
 
+        attraction_type_filter = form.cleaned_data.get("attraction_type")
+        if attraction_type_filter:
+            qs = qs.filter(attraction_type=attraction_type_filter)
+
         # Filtrowanie cateringów po promieniu dowozu
         if firm_type == "catering" and user_lat and user_lng:
             nearby_ids = []

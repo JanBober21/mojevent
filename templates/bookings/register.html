@@ -3,6 +3,20 @@
 
 {% block title %}Rejestracja — EventBook{% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const radios = document.querySelectorAll('input[name="client_type"]');
+    const companyFields = document.getElementById('company-fields');
+    function toggle() {
+        const val = document.querySelector('input[name="client_type"]:checked');
+        companyFields.style.display = (val && val.value === 'company') ? 'block' : 'none';
+    }
+    radios.forEach(r => r.addEventListener('change', toggle));
+    toggle();
+});
+</script>
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
@@ -60,6 +74,52 @@
                             {% endif %}
                             <small class="text-muted">Zostanie automatycznie uzupełniony przy rezerwacji</small>
                         </div>
+
+                        <!-- Typ klienta: Firma / Osoba prywatna -->
+                        <div class="col-12">
+                            <label class="form-label d-block">Typ klienta</label>
+                            <div class="d-flex gap-4">
+                                {% for radio in form.client_type %}
+                                <div class="form-check">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.client_type.errors %}
+                            <div class="text-danger small">{{ form.client_type.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Dane firmowe (widoczne tylko dla Firma) -->
+                        <div id="company-fields" style="display:none;">
+                            <div class="row g-3 mt-0">
+                                <div class="col-12">
+                                    <label class="form-label">Nazwa firmy *</label>
+                                    {{ form.company_name }}
+                                    {% if form.company_name.errors %}
+                                    <div class="text-danger small">{{ form.company_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Adres firmy</label>
+                                    {{ form.company_address }}
+                                    {% if form.company_address.errors %}
+                                    <div class="text-danger small">{{ form.company_address.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">NIP *</label>
+                                    {{ form.company_nip }}
+                                    {% if form.company_nip.errors %}
+                                    <div class="text-danger small">{{ form.company_nip.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Hasło *</label>
                             {{ form.password1 }}

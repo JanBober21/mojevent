@@ -96,6 +96,30 @@ class UserRegisterForm(UserCreationForm):
         required=False,
         widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "np. +48 123 456 789"}),
     )
+    client_type = forms.ChoiceField(
+        label="Typ klienta",
+        choices=UserProfile.ClientType.choices,
+        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
+        initial="private",
+    )
+    company_name = forms.CharField(
+        label="Nazwa firmy",
+        max_length=200,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "np. ABC Sp. z o.o."}),
+    )
+    company_address = forms.CharField(
+        label="Adres firmy",
+        max_length=300,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "ul. Przykładowa 1, 00-000 Warszawa"}),
+    )
+    company_nip = forms.CharField(
+        label="NIP",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "np. 1234567890"}),
+    )
 
     class Meta:
         model = User
@@ -106,6 +130,15 @@ class UserRegisterForm(UserCreationForm):
         self.fields["username"].widget.attrs.update({"class": "form-control"})
         self.fields["password1"].widget.attrs.update({"class": "form-control"})
         self.fields["password2"].widget.attrs.update({"class": "form-control"})
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("client_type") == "company":
+            if not cleaned.get("company_name"):
+                self.add_error("company_name", "Podaj nazwę firmy.")
+            if not cleaned.get("company_nip"):
+                self.add_error("company_nip", "Podaj NIP firmy.")
+        return cleaned
 
 
 class UserSettingsForm(forms.Form):
@@ -136,6 +169,38 @@ class UserSettingsForm(forms.Form):
         choices=UserProfile.CITY_CHOICES,
         widget=forms.Select(attrs={"class": "form-select"}),
     )
+    client_type = forms.ChoiceField(
+        label="Typ klienta",
+        choices=UserProfile.ClientType.choices,
+        widget=forms.RadioSelect(attrs={"class": "form-check-input"}),
+    )
+    company_name = forms.CharField(
+        label="Nazwa firmy",
+        max_length=200,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    company_address = forms.CharField(
+        label="Adres firmy",
+        max_length=300,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    company_nip = forms.CharField(
+        label="NIP",
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("client_type") == "company":
+            if not cleaned.get("company_name"):
+                self.add_error("company_name", "Podaj nazwę firmy.")
+            if not cleaned.get("company_nip"):
+                self.add_error("company_nip", "Podaj NIP firmy.")
+        return cleaned
 
 
 class RestaurantSearchForm(forms.Form):

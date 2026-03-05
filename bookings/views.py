@@ -388,6 +388,10 @@ def account_settings(request):
             request.user.save()
             profile.phone = form.cleaned_data["phone"]
             profile.city = form.cleaned_data["city"]
+            profile.client_type = form.cleaned_data["client_type"]
+            profile.company_name = form.cleaned_data.get("company_name", "")
+            profile.company_address = form.cleaned_data.get("company_address", "")
+            profile.company_nip = form.cleaned_data.get("company_nip", "")
             profile.save()
             messages.success(request, "Ustawienia konta zostały zapisane.")
             next_url = request.GET.get("next", "account_settings")
@@ -399,6 +403,10 @@ def account_settings(request):
             "email": request.user.email,
             "phone": profile.phone,
             "city": profile.city or "Poznań",
+            "client_type": profile.client_type or "private",
+            "company_name": profile.company_name,
+            "company_address": profile.company_address,
+            "company_nip": profile.company_nip,
         })
 
     is_new_google = request.GET.get("new") == "1"
@@ -416,11 +424,15 @@ def register(request):
         form = UserRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Utwórz profil z telefonem
+            # Utwórz profil z telefonem i danymi firmowymi
             from .models import UserProfile
             UserProfile.objects.create(
                 user=user,
                 phone=form.cleaned_data.get("phone", ""),
+                client_type=form.cleaned_data.get("client_type", "private"),
+                company_name=form.cleaned_data.get("company_name", ""),
+                company_address=form.cleaned_data.get("company_address", ""),
+                company_nip=form.cleaned_data.get("company_nip", ""),
             )
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, f"Witaj, {user.first_name}! Konto zostało utworzone.")

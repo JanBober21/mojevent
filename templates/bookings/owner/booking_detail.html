@@ -139,6 +139,18 @@
                         </a>
                     </p>
                 </div>
+
+                {% if booking.user.profile.is_company %}
+                <hr>
+                <div class="mb-0">
+                    <h6 class="text-muted mb-1"><i class="bi bi-building me-1"></i>Dane firmy</h6>
+                    <p class="mb-1"><strong>{{ booking.user.profile.company_name }}</strong></p>
+                    {% if booking.user.profile.company_address %}
+                    <p class="mb-1 text-muted"><i class="bi bi-geo-alt me-1"></i>{{ booking.user.profile.company_address }}</p>
+                    {% endif %}
+                    <p class="mb-0"><strong>NIP:</strong> {{ booking.user.profile.company_nip }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 

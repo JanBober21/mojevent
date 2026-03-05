@@ -519,6 +519,10 @@ class BookingMessage(models.Model):
 class UserProfile(models.Model):
     """Profil użytkownika z dodatkowymi danymi."""
 
+    class ClientType(models.TextChoices):
+        PRIVATE = "private", "Osoba prywatna"
+        COMPANY = "company", "Firma"
+
     CITY_CHOICES = [
         ("Poznań", "Poznań"),
         ("Warszawa", "Warszawa"),
@@ -538,10 +542,21 @@ class UserProfile(models.Model):
     )
     phone = models.CharField("Telefon", max_length=20, blank=True)
     city = models.CharField("Miasto", max_length=100, blank=True, default="Poznań")
+    client_type = models.CharField(
+        "Typ klienta", max_length=10,
+        choices=ClientType.choices, default=ClientType.PRIVATE,
+    )
+    company_name = models.CharField("Nazwa firmy", max_length=200, blank=True)
+    company_address = models.CharField("Adres firmy", max_length=300, blank=True)
+    company_nip = models.CharField("NIP", max_length=20, blank=True)
 
     class Meta:
         verbose_name = "Profil użytkownika"
         verbose_name_plural = "Profile użytkowników"
+
+    @property
+    def is_company(self):
+        return self.client_type == self.ClientType.COMPANY
 
     def __str__(self):
         return f"Profil: {self.user.get_full_name() or self.user.username}"

@@ -50,6 +50,17 @@
                             <i class="bi bi-envelope"></i> {{ booking.email }}
                         </p>
 
+                        {% if booking.user.profile.is_company %}
+                        <h6 class="text-muted">Dane firmy</h6>
+                        <p>
+                            <i class="bi bi-building"></i> {{ booking.user.profile.company_name }}<br>
+                            {% if booking.user.profile.company_address %}
+                            <i class="bi bi-geo-alt"></i> {{ booking.user.profile.company_address }}<br>
+                            {% endif %}
+                            <strong>NIP:</strong> {{ booking.user.profile.company_nip }}
+                        </p>
+                        {% endif %}
+
                         <h6 class="text-muted">Szacunkowy koszt</h6>
                         <p class="fs-4 text-primary fw-bold">{{ booking.total_cost }} zł</p>
 

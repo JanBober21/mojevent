@@ -135,8 +135,8 @@
                         {% for event in day.events %}
                             <a href="{% url 'owner_booking_detail' event.id %}"
                                class="cal-event status-{{ event.status }}"
-                               title="{{ event.type_display }} — {{ event.guest_count }} osób — {{ event.client }}">
-                                {{ event.type_display }} ({{ event.guest_count }})
+                               title="{{ event.type_display }} — {{ event.guest_count|default:'—' }} osób — {{ event.client }}">
+                                {{ event.type_display }} ({{ event.guest_count|default:'—' }})
                             </a>
                         {% endfor %}
                     </div>

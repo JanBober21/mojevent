@@ -805,7 +805,7 @@ def owner_calendar(request):
         "total": bookings.count(),
         "confirmed": bookings.filter(status=Booking.Status.CONFIRMED).count(),
         "pending": bookings.filter(status=Booking.Status.PENDING).count(),
-        "total_guests": sum(b.guest_count for b in bookings),
+        "total_guests": sum(b.guest_count or 0 for b in bookings),
     }
 
     return render(request, "bookings/owner/calendar.html", {

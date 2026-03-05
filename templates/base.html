@@ -34,41 +34,66 @@
                     {% endif %}
                     {% if user.is_authenticated %}
                         {% if is_firm_member %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'owner_dashboard' %}">
-                                <i class="bi bi-speedometer2"></i> Panel firmy
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'owner_bookings' %}">
-                                <i class="bi bi-calendar-check"></i> Rezerwacje
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'owner_menu' %}">
-                                <i class="bi bi-menu-button-wide"></i> Menu
-                            </a>
-                        </li>
-                        {% if active_restaurant.firm_type == 'attraction' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'owner_attractions' %}">
-                                <i class="bi bi-stars"></i> Atrakcje
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'owner_restaurant_edit' %}">
-                                <i class="bi bi-pencil-square"></i> Moja firma
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'owner_firms' %}">
-                                <i class="bi bi-buildings"></i> Moje firmy
-                                {% if firm_memberships.count > 1 %}
-                                <span class="badge bg-primary rounded-pill ms-1" style="font-size: .65rem;">{{ firm_memberships.count }}</span>
-                                {% endif %}
-                            </a>
-                        </li>
+                            {% if firm_memberships.count > 1 %}
+                            {# ── Multi-firma: główny pasek = zarządzanie firmami ── #}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-buildings"></i>
+                                    {{ active_restaurant.name|default:"Wybierz firmę" }}
+                                </a>
+                                <ul class="dropdown-menu eb-dropdown">
+                                    {% for m in firm_memberships %}
+                                    <li>
+                                        <a class="dropdown-item {% if m.restaurant_id == active_restaurant.id %}active fw-bold{% endif %}"
+                                           href="{% url 'owner_switch_firm' restaurant_id=m.restaurant_id %}?next={{ request.path }}">
+                                            {% if m.restaurant_id == active_restaurant.id %}
+                                            <i class="bi bi-check-circle-fill me-1"></i>
+                                            {% else %}
+                                            <i class="bi bi-circle me-1"></i>
+                                            {% endif %}
+                                            {{ m.restaurant.name }}
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'owner_firms' %}">
+                                            <i class="bi bi-gear"></i> Zarządzaj lokalami
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                            {% else %}
+                            {# ── Jedna firma: wszystko w jednym pasku ── #}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_dashboard' %}">
+                                    <i class="bi bi-speedometer2"></i> Panel firmy
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_bookings' %}">
+                                    <i class="bi bi-calendar-check"></i> Rezerwacje
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_menu' %}">
+                                    <i class="bi bi-menu-button-wide"></i> Menu
+                                </a>
+                            </li>
+                            {% if active_restaurant.firm_type == 'attraction' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_attractions' %}">
+                                    <i class="bi bi-stars"></i> Atrakcje
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_restaurant_edit' %}">
+                                    <i class="bi bi-pencil-square"></i> Moja firma
+                                </a>
+                            </li>
+                            {% endif %}
                         {% else %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'booking_list' %}">
@@ -134,6 +159,48 @@
             </div>
         </div>
     </nav>
+
+    {% if is_firm_member and firm_memberships.count > 1 %}
+    <!-- Sub-nawigacja firmy -->
+    <nav class="eb-subnav">
+        <div class="container">
+            <div class="d-flex align-items-center overflow-auto py-1">
+                <span class="eb-subnav-label me-2">
+                    <i class="bi bi-building"></i> {{ active_restaurant.name }}:
+                </span>
+                <ul class="nav eb-subnav-nav flex-nowrap mb-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'owner_dashboard' %}">
+                            <i class="bi bi-speedometer2"></i> Panel
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'owner_bookings' %}">
+                            <i class="bi bi-calendar-check"></i> Rezerwacje
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'owner_menu' %}">
+                            <i class="bi bi-menu-button-wide"></i> Menu
+                        </a>
+                    </li>
+                    {% if active_restaurant.firm_type == 'attraction' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'owner_attractions' %}">
+                            <i class="bi bi-stars"></i> Atrakcje
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'owner_restaurant_edit' %}">
+                            <i class="bi bi-pencil-square"></i> Moja firma
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
 
     <!-- Komunikaty -->
     {% if messages %}

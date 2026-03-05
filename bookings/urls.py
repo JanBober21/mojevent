@@ -49,6 +49,7 @@ urlpatterns = [
     path("konto/", views.account_settings, name="account_settings"),
 
     # Autoryzacja
+    path("login-redirect/", views.login_redirect_view, name="login_redirect"),
     path("rejestracja/", views.register, name="register"),
     path("rejestracja/restauracja/", views.owner_register, name="owner_register"),
     path(

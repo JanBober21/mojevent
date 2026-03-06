@@ -50,26 +50,32 @@
                         </div>
                     </div>
 
-                    <!-- ── Import z social media ── -->
-                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-download"></i> Import danych z social media</h5>
+                    <!-- ── Import danych z linku ── -->
+                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-download"></i> Szybki import danych</h5>
                     <p class="text-muted small mb-3">
-                        Wklej link do profilu na Facebooku lub Instagramie i kliknij <strong>Pobierz</strong>, aby automatycznie uzupełnić dane firmy i zdjęcia.
+                        Wklej link do profilu firmy i kliknij <strong>+</strong>. Obsługiwane:
+                        <span class="badge bg-primary bg-opacity-10 text-primary"><i class="bi bi-facebook"></i> Facebook</span>
+                        <span class="badge bg-danger bg-opacity-10 text-danger"><i class="bi bi-instagram"></i> Instagram</span>
+                        <span class="badge bg-success bg-opacity-10 text-success"><i class="bi bi-google"></i> Google Maps</span>
+                        <span class="badge bg-warning bg-opacity-10 text-dark"><i class="bi bi-star-half"></i> TripAdvisor</span>
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary"><i class="bi bi-globe"></i> Strona www</span>
                     </p>
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-5">
-                            <label class="form-label"><i class="bi bi-facebook"></i> Facebook</label>
-                            {{ form.facebook_url }}
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label"><i class="bi bi-instagram"></i> Instagram</label>
-                            {{ form.instagram_url }}
-                        </div>
-                        <div class="col-md-2 d-grid">
-                            <button type="button" class="btn btn-outline-primary" id="social-import-btn">
-                                <i class="bi bi-download"></i> Pobierz
-                            </button>
-                        </div>
+
+                    <div class="input-group mb-2">
+                        <input type="url" class="form-control" id="social-url-input"
+                               placeholder="Wklej link, np. https://facebook.com/nazwa-firmy">
+                        <button type="button" class="btn btn-outline-secondary" id="social-add-btn" title="Dodaj link">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
                     </div>
+
+                    <!-- Dodane linki -->
+                    <div id="social-links-list" class="mb-2"></div>
+
+                    <button type="button" class="btn btn-primary w-100" id="social-import-btn" style="display:none;">
+                        <i class="bi bi-download"></i> Pobierz dane ze wszystkich linków
+                    </button>
+
                     <div id="social-import-status" class="mt-2" style="display:none;"></div>
                     <!-- Podgląd pobranych zdjęć -->
                     <div id="social-import-preview" class="mt-3" style="display:none;">
@@ -518,27 +524,76 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ── Social Media Import ──────────────────────────────────────────────
+    // ── Universal Link Import ─────────────────────────────────────────────
+    const socialUrlInput = document.getElementById('social-url-input');
+    const socialAddBtn = document.getElementById('social-add-btn');
+    const socialLinksList = document.getElementById('social-links-list');
     const socialBtn = document.getElementById('social-import-btn');
     const socialStatus = document.getElementById('social-import-status');
     const socialPreview = document.getElementById('social-import-preview');
     const socialImagesRow = document.getElementById('social-images-row');
 
+    const PLATFORM_RE = [
+        { name: 'Facebook',    icon: 'bi-facebook',  cls: 'text-bg-primary',  re: /facebook\.com|fb\.com|fb\.me/i },
+        { name: 'Instagram',   icon: 'bi-instagram', cls: 'text-bg-danger',   re: /instagram\.com/i },
+        { name: 'Google Maps', icon: 'bi-google',    cls: 'text-bg-success',  re: /google\..+\/maps|maps\.google|maps\.app\.goo|g\.page/i },
+        { name: 'TripAdvisor', icon: 'bi-star-half', cls: 'text-bg-warning',  re: /tripadvisor\./i },
+    ];
+    const importLinks = [];  // tracked URLs
+
+    function detectPlatform(url) {
+        for (const p of PLATFORM_RE) {
+            if (p.re.test(url)) return p;
+        }
+        return { name: 'Strona www', icon: 'bi-globe', cls: 'text-bg-secondary' };
+    }
+
+    function renderLinks() {
+        socialLinksList.innerHTML = '';
+        importLinks.forEach(function(entry, idx) {
+            const p = detectPlatform(entry);
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + p.cls + ' me-1 mb-1 d-inline-flex align-items-center gap-1';
+            badge.style.cursor = 'pointer';
+            badge.title = entry;
+            badge.innerHTML = '<i class="bi ' + p.icon + '"></i> ' + p.name +
+                ' <i class="bi bi-x-lg ms-1" style="font-size:.7em"></i>';
+            badge.addEventListener('click', function() {
+                importLinks.splice(idx, 1);
+                renderLinks();
+            });
+            socialLinksList.appendChild(badge);
+        });
+        socialBtn.style.display = importLinks.length ? 'block' : 'none';
+    }
+
+    function addLink() {
+        const url = socialUrlInput.value.trim();
+        if (!url) return;
+        if (importLinks.includes(url)) {
+            socialUrlInput.value = '';
+            return;
+        }
+        importLinks.push(url);
+        socialUrlInput.value = '';
+        renderLinks();
+    }
+
+    if (socialAddBtn) {
+        socialAddBtn.addEventListener('click', addLink);
+        socialUrlInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); addLink(); }
+        });
+    }
+
     if (socialBtn) {
         socialBtn.addEventListener('click', function() {
-            const fbUrl = document.getElementById('id_facebook_url')?.value?.trim() || '';
-            const igUrl = document.getElementById('id_instagram_url')?.value?.trim() || '';
-
-            if (!fbUrl && !igUrl) {
-                socialStatus.style.display = 'block';
-                socialStatus.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="bi bi-exclamation-triangle"></i> Podaj link do Facebooka lub Instagrama.</div>';
-                return;
-            }
+            if (!importLinks.length) return;
 
             socialBtn.disabled = true;
-            socialBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Pobieram…';
+            socialBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Pobieram dane…';
             socialStatus.style.display = 'block';
-            socialStatus.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="bi bi-hourglass-split"></i> Pobieranie danych, proszę czekać…</div>';
+            socialStatus.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="bi bi-hourglass-split"></i> Pobieranie danych z ' + importLinks.length + ' źródeł, proszę czekać…</div>';
 
             fetch('{% url "social_import_api" %}', {
                 method: 'POST',
@@ -546,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                 },
-                body: JSON.stringify({ facebook_url: fbUrl, instagram_url: igUrl }),
+                body: JSON.stringify({ urls: importLinks }),
             })
             .then(r => r.json())
             .then(data => {
@@ -557,54 +612,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 let filled = [];
 
-                // Wypełnij pola formularza jeśli są puste
                 const nameField = document.getElementById('id_name');
-                if (nameField && !nameField.value && data.name) {
-                    nameField.value = data.name;
-                    filled.push('nazwa');
-                }
+                if (nameField && !nameField.value && data.name) { nameField.value = data.name; filled.push('nazwa'); }
 
                 const descField = document.getElementById('id_description');
-                if (descField && !descField.value && data.description) {
-                    descField.value = data.description;
-                    filled.push('opis');
-                }
+                if (descField && !descField.value && data.description) { descField.value = data.description; filled.push('opis'); }
 
                 const phoneField = document.getElementById('id_phone');
-                if (phoneField && !phoneField.value && data.phone) {
-                    phoneField.value = data.phone;
-                    filled.push('telefon');
-                }
+                if (phoneField && !phoneField.value && data.phone) { phoneField.value = data.phone; filled.push('telefon'); }
 
                 const websiteField = document.getElementById('id_website');
-                if (websiteField && !websiteField.value && data.website) {
-                    websiteField.value = data.website;
-                    filled.push('strona www');
-                }
+                if (websiteField && !websiteField.value && data.website) { websiteField.value = data.website; filled.push('strona www'); }
 
                 const addressField = document.getElementById('id_address');
-                if (addressField && !addressField.value && data.address) {
-                    addressField.value = data.address;
-                    filled.push('adres');
-                }
+                if (addressField && !addressField.value && data.address) { addressField.value = data.address; filled.push('adres'); }
 
                 const cityField = document.getElementById('id_city');
-                if (cityField && !cityField.value && data.city) {
-                    cityField.value = data.city;
-                    filled.push('miasto');
-                }
+                if (cityField && !cityField.value && data.city) { cityField.value = data.city; filled.push('miasto'); }
 
                 const imgUrlField = document.getElementById('id_image_url');
-                if (imgUrlField && !imgUrlField.value && data.image_url) {
-                    imgUrlField.value = data.image_url;
-                    filled.push('zdjęcie główne');
+                if (imgUrlField && !imgUrlField.value && data.image_url) { imgUrlField.value = data.image_url; filled.push('zdjęcie główne'); }
+
+                // Źródła
+                if (data.sources && data.sources.length) {
+                    let srcHtml = '<small class="text-muted">Źródła: ';
+                    srcHtml += data.sources.map(s => '<span class="badge bg-light text-dark border me-1">' + s.platform_label + '</span>').join('');
+                    srcHtml += '</small>';
+                    socialStatus.insertAdjacentHTML('afterend', '<div class="mt-1">' + srcHtml + '</div>');
                 }
 
-                // Pokaż pobrane zdjęcia
+                // Zdjęcia
                 if (data.images && data.images.length > 0) {
                     socialPreview.style.display = 'block';
                     socialImagesRow.innerHTML = '';
-                    data.images.forEach(function(imgUrl, idx) {
+                    data.images.forEach(function(imgUrl) {
                         const col = document.createElement('div');
                         col.className = 'col-4 col-md-2';
                         col.innerHTML =
@@ -624,7 +665,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (filled.length > 0) {
                     socialStatus.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle"></i> Pobrano: ' + filled.join(', ') + '. Sprawdź i uzupełnij pozostałe pola.</div>';
                 } else {
-                    socialStatus.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle"></i> Nie udało się pobrać danych. Profil może być prywatny lub niedostępny.</div>';
+                    socialStatus.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle"></i> Nie udało się pobrać danych. Profile mogą być prywatne lub niedostępne.</div>';
                 }
             })
             .catch(err => {
@@ -632,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .finally(() => {
                 socialBtn.disabled = false;
-                socialBtn.innerHTML = '<i class="bi bi-download"></i> Pobierz';
+                socialBtn.innerHTML = '<i class="bi bi-download"></i> Pobierz dane ze wszystkich linków';
             });
         });
     }

@@ -359,7 +359,7 @@ class RestaurantForm(forms.ModelForm):
         fields = [
             "firm_type", "attraction_type", "delivery_radius_km",
             "name", "description", "address", "city",
-            "phone", "email", "website", "facebook_url", "instagram_url", "image_url",
+            "phone", "email", "website", "image_url",
             "max_guests", "price_per_person",
             "has_parking", "has_garden", "has_dance_floor", "has_accommodation",
             "latitude", "longitude",
@@ -384,8 +384,6 @@ class RestaurantForm(forms.ModelForm):
             "phone": forms.TextInput(attrs={"class": "form-control"}),
             "email": forms.EmailInput(attrs={"class": "form-control"}),
             "website": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://..."}),
-            "facebook_url": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://facebook.com/..."}),
-            "instagram_url": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://instagram.com/..."}),
             "image_url": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://...link do zdjęcia"}),
             "max_guests": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "price_per_person": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": "0.01"}),

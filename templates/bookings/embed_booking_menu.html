@@ -143,10 +143,16 @@
                                 </td>
                                 <td class="text-end text-nowrap">{{ entry.item.price }} zł</td>
                                 <td>
-                                    <input type="number" name="qty_{{ entry.item.id }}"
-                                           class="form-control form-control-sm text-center menu-qty"
-                                           data-price="{{ entry.item.price }}"
-                                           value="{{ entry.qty }}" min="0" max="999">
+                                    <div class="input-group input-group-sm justify-content-center" style="max-width:130px;margin:0 auto;">
+                                        <button type="button" class="btn btn-outline-secondary qty-btn" data-dir="-1" data-target="qty_{{ entry.item.id }}" style="width:34px;font-size:1.1rem;font-weight:700;">−</button>
+                                        <input type="number" name="qty_{{ entry.item.id }}"
+                                               id="qty_{{ entry.item.id }}"
+                                               class="form-control form-control-sm text-center menu-qty"
+                                               data-price="{{ entry.item.price }}"
+                                               value="{{ entry.qty }}" min="0" max="999"
+                                               style="max-width:46px;">
+                                        <button type="button" class="btn btn-outline-primary qty-btn" data-dir="1" data-target="qty_{{ entry.item.id }}" style="width:34px;font-size:1.1rem;font-weight:700;">+</button>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -204,6 +210,20 @@ document.addEventListener('DOMContentLoaded', function() {
     inputs.forEach(function(inp) {
         inp.addEventListener('input', recalc);
     });
+
+    document.querySelectorAll('.qty-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const inp = document.getElementById(this.dataset.target);
+            if (!inp) return;
+            const dir = parseInt(this.dataset.dir);
+            let val = (parseInt(inp.value) || 0) + dir;
+            if (val < 0) val = 0;
+            if (val > 999) val = 999;
+            inp.value = val;
+            inp.dispatchEvent(new Event('input'));
+        });
+    });
+
     recalc();
 });
 </script>

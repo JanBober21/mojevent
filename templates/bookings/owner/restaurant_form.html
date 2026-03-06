@@ -327,6 +327,26 @@
                         </label>
                     </div>
 
+                    {% if editing %}
+                    <!-- Formularz na zewnętrzną stronę -->
+                    <h5 class="mt-4 mb-1 border-bottom pb-2">
+                        <i class="bi bi-code-slash text-primary"></i> Formularz rezerwacji na Twoją stronę
+                    </h5>
+                    <p class="text-muted small mb-2">
+                        Wygeneruj dedykowaną stronę rezerwacji, którą możesz umieścić na swojej stronie WWW.
+                    </p>
+                    <a href="{% url 'owner_generate_embed' %}" class="btn btn-outline-primary mb-3">
+                        <i class="bi bi-magic"></i>
+                        {% if restaurant.embed_enabled %}Zarządzaj formularzem na WWW{% else %}Generuj formularz na moje WWW{% endif %}
+                    </a>
+                    {% if restaurant.embed_enabled and restaurant.booking_slug %}
+                    <div class="alert alert-success py-2 small mb-3">
+                        <i class="bi bi-check-circle"></i> Formularz aktywny:
+                        <a href="/rezerwacja/{{ restaurant.booking_slug }}/" target="_blank">/rezerwacja/{{ restaurant.booking_slug }}/</a>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
                     <div class="mt-4 d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
                             {% if editing %}

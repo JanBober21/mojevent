@@ -13,6 +13,7 @@ import calendar as cal_module
 
 from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
+from .style_scraper import scrape_styles
 
 
 def _get_owner_context(request):
@@ -1679,4 +1680,229 @@ def saved_menus_list(request):
         })
     return render(request, "bookings/saved_menus.html", {
         "entries": entries,
+    })
+
+
+# ── Formularz rezerwacji na zewnętrzną stronę (embed) ──────────────────────────
+
+def _build_calendar(restaurant, cal_year, cal_month):
+    """Helper: generate calendar data for a given month."""
+    today = timezone.now().date()
+    if (cal_year, cal_month) < (today.year, today.month):
+        cal_year, cal_month = today.year, today.month
+
+    first_day, num_days = cal_module.monthrange(cal_year, cal_month)
+    booked_dates = set(
+        Booking.objects.filter(
+            restaurant=restaurant,
+            event_date__year=cal_year,
+            event_date__month=cal_month,
+        ).exclude(status="cancelled").values_list("event_date", flat=True)
+    )
+    weeks = []
+    week = [None] * first_day
+    for day in range(1, num_days + 1):
+        d = date(cal_year, cal_month, day)
+        is_past = d < today
+        is_booked = d in booked_dates
+        week.append({"day": day, "date": d, "past": is_past, "booked": is_booked, "free": not is_past and not is_booked})
+        if len(week) == 7:
+            weeks.append(week)
+            week = []
+    if week:
+        week.extend([None] * (7 - len(week)))
+        weeks.append(week)
+
+    if cal_month == 1:
+        prev_y, prev_m = cal_year - 1, 12
+    else:
+        prev_y, prev_m = cal_year, cal_month - 1
+    cal_prev = {"year": prev_y, "month": prev_m} if (prev_y, prev_m) >= (today.year, today.month) else None
+    if cal_month == 12:
+        cal_next = {"year": cal_year + 1, "month": 1}
+    else:
+        cal_next = {"year": cal_year, "month": cal_month + 1}
+
+    return weeks, cal_year, cal_month, cal_prev, cal_next
+
+
+def embed_booking(request, slug):
+    """Publiczny formularz rezerwacji – strona pod /rezerwacja/<slug>/."""
+    from django.contrib.auth.models import User as AuthUser
+
+    restaurant = get_object_or_404(
+        Restaurant, booking_slug=slug, embed_enabled=True, is_active=True,
+    )
+    is_attraction = restaurant.firm_type == Restaurant.FirmType.ATTRACTION
+
+    # Kalendarz
+    today = timezone.now().date()
+    try:
+        cal_year = int(request.GET.get("cal_year", today.year))
+        cal_month = int(request.GET.get("cal_month", today.month))
+    except (ValueError, TypeError):
+        cal_year, cal_month = today.year, today.month
+
+    show_cal = restaurant.firm_type == Restaurant.FirmType.VENUE and restaurant.show_calendar
+    calendar_data = cal_prev = cal_next = None
+    if show_cal:
+        calendar_data, cal_year, cal_month, cal_prev, cal_next = _build_calendar(
+            restaurant, cal_year, cal_month,
+        )
+
+    ctx = {
+        "restaurant": restaurant,
+        "is_attraction": is_attraction,
+        "calendar_data": calendar_data,
+        "cal_year": cal_year,
+        "cal_month": cal_month,
+        "cal_prev": cal_prev,
+        "cal_next": cal_next,
+    }
+
+    if request.method == "POST":
+        form = BookingForm(request.POST, firm_type=restaurant.firm_type)
+        if form.is_valid():
+            booking = form.save(commit=False)
+            booking.restaurant = restaurant
+
+            guest_ok = True
+            if not is_attraction and booking.guest_count and booking.guest_count > restaurant.max_guests:
+                form.add_error(
+                    "guest_count",
+                    f"Firma przyjmuje maksymalnie {restaurant.max_guests} gości.",
+                )
+                guest_ok = False
+
+            if guest_ok:
+                if Booking.objects.filter(
+                    restaurant=restaurant,
+                    event_date=booking.event_date,
+                ).exclude(status=Booking.Status.CANCELLED).exists():
+                    form.add_error("event_date", "Ta data jest już zarezerwowana.")
+                else:
+                    # Przypisz lub utwórz użytkownika-gościa na podstawie e-mail
+                    email = form.cleaned_data["email"]
+                    guest_user, created = AuthUser.objects.get_or_create(
+                        email=email,
+                        defaults={
+                            "username": f"guest_{email.split('@')[0]}_{AuthUser.objects.count()}",
+                            "first_name": form.cleaned_data.get("first_name", ""),
+                            "last_name": form.cleaned_data.get("last_name", ""),
+                        },
+                    )
+                    if created:
+                        guest_user.set_unusable_password()
+                        guest_user.save()
+
+                    booking.user = guest_user
+                    booking.save()
+
+                    # Wiadomość powitalna
+                    if restaurant.welcome_message.strip():
+                        owner_qs = restaurant.owners.filter(role="owner").select_related("user")
+                        if not owner_qs.exists():
+                            owner_qs = restaurant.owners.select_related("user")
+                        if owner_qs.exists():
+                            BookingMessage.objects.create(
+                                booking=booking,
+                                sender=owner_qs.first().user,
+                                content=restaurant.welcome_message.strip(),
+                            )
+
+                    ctx["success"] = True
+                    ctx["booking"] = booking
+                    ctx["form"] = form
+                    return render(request, "bookings/embed_booking.html", ctx)
+    else:
+        form = BookingForm(firm_type=restaurant.firm_type)
+
+    ctx["form"] = form
+    return render(request, "bookings/embed_booking.html", ctx)
+
+
+def embed_calendar_partial(request, slug):
+    """AJAX – kalendarz dla embed formularza."""
+    restaurant = get_object_or_404(
+        Restaurant, booking_slug=slug, embed_enabled=True, is_active=True,
+    )
+    today = timezone.now().date()
+    try:
+        cal_year = int(request.GET.get("cal_year", today.year))
+        cal_month = int(request.GET.get("cal_month", today.month))
+    except (ValueError, TypeError):
+        cal_year, cal_month = today.year, today.month
+
+    calendar_data, cal_year, cal_month, cal_prev, cal_next = _build_calendar(
+        restaurant, cal_year, cal_month,
+    )
+    return render(request, "bookings/_embed_calendar_partial.html", {
+        "calendar_data": calendar_data,
+        "cal_year": cal_year,
+        "cal_month": cal_month,
+        "cal_prev": cal_prev,
+        "cal_next": cal_next,
+    })
+
+
+@login_required
+def owner_generate_embed(request):
+    """Generuje (lub regeneruje) formularz rezerwacji dla firmy."""
+    from django.utils.text import slugify
+
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None or not restaurant:
+        messages.error(request, "Nie masz firmy do skonfigurowania.")
+        return redirect("owner_dashboard")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "generate":
+            # Generuj slug jeśli brak
+            if not restaurant.booking_slug:
+                base_slug = slugify(restaurant.name)
+                slug = base_slug
+                counter = 1
+                while Restaurant.objects.filter(booking_slug=slug).exclude(pk=restaurant.pk).exists():
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+                restaurant.booking_slug = slug
+
+            # Scrapuj style ze strony www
+            if restaurant.website:
+                try:
+                    css = scrape_styles(restaurant.website)
+                    restaurant.scraped_css = css
+                except Exception:
+                    restaurant.scraped_css = ""
+
+            restaurant.embed_enabled = True
+            restaurant.save()
+            messages.success(request, "Formularz rezerwacji został wygenerowany!")
+
+        elif action == "disable":
+            restaurant.embed_enabled = False
+            restaurant.save()
+            messages.info(request, "Formularz zewnętrzny został wyłączony.")
+
+        elif action == "refresh_css":
+            if restaurant.website:
+                try:
+                    css = scrape_styles(restaurant.website)
+                    restaurant.scraped_css = css
+                    restaurant.save()
+                    messages.success(request, "Style zostały odświeżone ze strony www.")
+                except Exception:
+                    messages.warning(request, "Nie udało się pobrać stylów ze strony.")
+            else:
+                messages.warning(request, "Brak adresu strony www w ustawieniach firmy.")
+
+    embed_url = None
+    if restaurant.embed_enabled and restaurant.booking_slug:
+        embed_url = request.build_absolute_uri(f"/rezerwacja/{restaurant.booking_slug}/")
+
+    return render(request, "bookings/owner/embed_settings.html", {
+        "restaurant": restaurant,
+        "embed_url": embed_url,
     })

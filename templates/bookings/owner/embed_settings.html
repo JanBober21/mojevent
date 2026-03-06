@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Formularz na stronę WWW — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-code-slash"></i> Formularz na Twoją stronę</h1>
+        <p class="text-muted fs-5">{{ restaurant.name }} — {{ restaurant.city }}</p>
+    </div>
+    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Powrót do panelu
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-3"><i class="bi bi-globe"></i> Generator formularza rezerwacji</h5>
+                <p class="text-muted">
+                    Wygeneruj dedykowaną stronę rezerwacji dla Twojej firmy. Klienci mogą rezerwować bezpośrednio
+                    z Twojej strony www — wystarczy dodać link. Style i czcionki zostaną pobrane z Twojej strony,
+                    aby formularz pasował do Twojego designu.
+                </p>
+
+                {% if not restaurant.website %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Brak strony WWW.</strong> Aby formularz mógł dopasować się do designu Twojej strony,
+                    <a href="{% url 'owner_restaurant_edit' %}">dodaj adres strony www</a> w ustawieniach firmy.
+                    Możesz wygenerować formularz bez tego — będzie używał domyślnych stylów EventBook.
+                </div>
+                {% endif %}
+
+                {% if embed_url %}
+                {# ── Formularz jest aktywny ── #}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i> <strong>Formularz jest aktywny!</strong>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Link do formularza:</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{ embed_url }}" id="embedUrl" readonly>
+                        <button class="btn btn-outline-primary" type="button" onclick="copyUrl()">
+                            <i class="bi bi-clipboard"></i> Kopiuj
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        Dodaj ten link na swojej stronie www. Klienci klikną i przejdą do formularza rezerwacji.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Podgląd:</label>
+                    <div>
+                        <a href="{{ embed_url }}" target="_blank" class="btn btn-outline-success">
+                            <i class="bi bi-eye"></i> Otwórz formularz
+                        </a>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Kod HTML do wklejenia na stronę:</label>
+                    <textarea class="form-control font-monospace small" rows="3" readonly id="embedCode">&lt;a href="{{ embed_url }}" target="_blank" style="display:inline-block;padding:12px 24px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;"&gt;📅 Zarezerwuj termin&lt;/a&gt;</textarea>
+                    <button class="btn btn-sm btn-outline-secondary mt-1" onclick="copyCode()">
+                        <i class="bi bi-clipboard"></i> Kopiuj kod HTML
+                    </button>
+                </div>
+
+                <hr>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% if restaurant.website %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="refresh_css">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-clockwise"></i> Odśwież style ze strony WWW
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="post" onsubmit="return confirm('Czy na pewno chcesz wyłączyć formularz zewnętrzny?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="disable">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle"></i> Wyłącz formularz
+                        </button>
+                    </form>
+                </div>
+
+                {% else %}
+                {# ── Formularz nie jest aktywny ── #}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="generate">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-magic"></i> Generuj formularz na moje WWW
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle"></i> Jak to działa?</h6>
+                <ol class="text-muted small">
+                    <li class="mb-2">Kliknij „Generuj formularz" — stworzymy dedykowaną stronę rezerwacji.</li>
+                    <li class="mb-2">Pobieramy style i czcionki z Twojej strony www, aby formularz pasował do Twojego designu.</li>
+                    <li class="mb-2">Skopiuj link i dodaj go na swojej stronie — np. jako przycisk „Zarezerwuj".</li>
+                    <li class="mb-2">Klienci rezerwują bez logowania — rezerwacja pojawi się w Twoim panelu.</li>
+                </ol>
+                <hr>
+                <h6><i class="bi bi-palette"></i> Co pobieramy ze strony?</h6>
+                <ul class="text-muted small mb-0">
+                    <li>Czcionki (Google Fonts i inne)</li>
+                    <li>Kolory tła i tekstu</li>
+                    <li>Rodziny czcionek</li>
+                    <li>Deklaracje @font-face</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyUrl() {
+    const input = document.getElementById('embedUrl');
+    input.select();
+    navigator.clipboard.writeText(input.value);
+    const btn = event.target.closest('button');
+    btn.innerHTML = '<i class="bi bi-check"></i> Skopiowano!';
+    setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Kopiuj', 2000);
+}
+function copyCode() {
+    const ta = document.getElementById('embedCode');
+    ta.select();
+    navigator.clipboard.writeText(ta.value);
+    const btn = event.target.closest('button');
+    btn.innerHTML = '<i class="bi bi-check"></i> Skopiowano!';
+    setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Kopiuj kod HTML', 2000);
+}
+</script>
+{% endblock %}

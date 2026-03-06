@@ -89,6 +89,19 @@ class Restaurant(models.Model):
         help_text="Wyświetla kalendarz z wolnymi/zajętymi terminami na stronie firmy (tylko Imprezy w lokalu).",
     )
 
+    # ── Formularz rezerwacji na zewnętrzną stronę ──────────────────────────
+    booking_slug = models.SlugField(
+        "Slug formularza", max_length=120, unique=True, blank=True, null=True,
+        help_text="Unikalny adres formularza, np. mojevent.pl/rezerwacja/hotel-bomba",
+    )
+    embed_enabled = models.BooleanField(
+        "Formularz zewnętrzny aktywny", default=False,
+    )
+    scraped_css = models.TextField(
+        "Pobrane style CSS", blank=True,
+        help_text="Automatycznie pobrane CSS/czcionki ze strony www restauracji.",
+    )
+
     is_active = models.BooleanField("Aktywna", default=True)
     created_at = models.DateTimeField("Data utworzenia", auto_now_add=True)
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)

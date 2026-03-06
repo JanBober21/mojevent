@@ -47,6 +47,11 @@ urlpatterns = [
     path("rezerwacje/<int:pk>/menu/", views.booking_menu_select, name="booking_menu_select"),
     path("rezerwacje/<int:pk>/catering-menu/", views.booking_catering_menu, name="booking_catering_menu"),
 
+    # Formularz rezerwacji na zewnętrzną stronę (embed)
+    path("rezerwacja/<slug:slug>/", views.embed_booking, name="embed_booking"),
+    path("rezerwacja/<slug:slug>/kalendarz/", views.embed_calendar_partial, name="embed_calendar_partial"),
+    path("owner/embed/", views.owner_generate_embed, name="owner_generate_embed"),
+
     # Zapisane menu
     path("zapisane-menu/", views.saved_menus_list, name="saved_menus_list"),
     path("restauracje/<int:restaurant_pk>/zapisz-menu/", views.toggle_save_menu, name="toggle_save_menu"),

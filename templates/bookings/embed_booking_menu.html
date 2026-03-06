@@ -1,0 +1,211 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wybór menu — {{ restaurant.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            background: #f8f9fa;
+        }
+        .embed-booking-page {
+            max-width: 780px;
+            width: 100%;
+        }
+        .embed-booking-page .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+        .embed-booking-page .card-header {
+            border-radius: 16px 16px 0 0 !important;
+        }
+        .embed-booking-page .btn-primary {
+            background: var(--accent, #7c3aed);
+            border-color: var(--accent, #7c3aed);
+        }
+        .embed-booking-page .btn-primary:hover {
+            filter: brightness(.9);
+        }
+        .embed-header {
+            background: linear-gradient(135deg, var(--accent, #7c3aed) 0%, var(--accent-dark, #6d28d9) 100%);
+            color: #fff;
+        }
+        .powered-by {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: .75rem;
+            color: #999;
+        }
+        .powered-by a { color: #7c3aed; text-decoration: none; }
+        .stepper { display: flex; gap: .5rem; align-items: center; justify-content: center; }
+        .stepper .step {
+            display: flex; align-items: center; gap: .35rem;
+            font-size: .85rem; color: #aaa;
+        }
+        .stepper .step.active { color: var(--accent, #7c3aed); font-weight: 600; }
+        .stepper .step.done { color: #198754; }
+        .stepper .step-line { width: 2rem; height: 2px; background: #ddd; }
+    </style>
+    {% if restaurant.scraped_css %}
+    <style>
+        {{ restaurant.scraped_css|safe }}
+    </style>
+    {% endif %}
+</head>
+<body>
+<div class="embed-booking-page">
+    <div class="card">
+        <div class="card-header embed-header py-3">
+            <div class="d-flex align-items-center gap-3">
+                {% if restaurant.get_image_url %}
+                <img src="{{ restaurant.get_image_url }}" alt="{{ restaurant.name }}"
+                     style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.3);">
+                {% endif %}
+                <div>
+                    <h5 class="mb-0">{{ restaurant.name }}</h5>
+                    <small class="opacity-75">{{ restaurant.city }}{% if restaurant.address %} · {{ restaurant.address }}{% endif %}</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <!-- Stepper -->
+            <div class="stepper mb-4">
+                <div class="step done">
+                    <i class="bi bi-check-circle-fill"></i> Dane rezerwacji
+                </div>
+                <div class="step-line"></div>
+                <div class="step {% if success %}done{% else %}active{% endif %}">
+                    {% if success %}<i class="bi bi-check-circle-fill"></i>{% else %}<i class="bi bi-circle-fill" style="font-size:.5rem;"></i>{% endif %}
+                    Wybór menu
+                </div>
+            </div>
+
+            {% if success %}
+            <div class="text-center py-4">
+                <i class="bi bi-check-circle text-success" style="font-size:3rem;"></i>
+                <h4 class="mt-3">Rezerwacja złożona!</h4>
+                <p class="text-muted">Dziękujemy! Potwierdzimy rezerwację w ciągu 24 godzin.</p>
+                <div class="mt-3 p-3 bg-light rounded">
+                    <strong>{{ booking.get_event_type_display }}</strong><br>
+                    <i class="bi bi-calendar"></i> {{ booking.event_date|date:"d.m.Y" }}
+                    {% if booking.event_start_time %} · {{ booking.event_start_time|time:"H:i" }}{% endif %}
+                    {% if booking.guest_count %}<br><i class="bi bi-people"></i> {{ booking.guest_count }} gości{% endif %}
+                    {% if booking.menu_selections.count %}
+                    <hr class="my-2">
+                    <small class="text-muted">
+                        <i class="bi bi-menu-button-wide"></i> Wybrane pozycje: {{ booking.menu_selections.count }}
+                    </small>
+                    {% endif %}
+                </div>
+                <a href="{% url 'embed_booking' restaurant.booking_slug %}" class="btn btn-outline-primary mt-3">
+                    <i class="bi bi-plus-circle"></i> Nowa rezerwacja
+                </a>
+            </div>
+            {% else %}
+            <p class="text-muted mb-3">
+                Wybierz pozycje z menu i podaj liczbę porcji. Możesz też pominąć ten krok.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                {% for group in menu_by_category %}
+                <h6 class="mt-3 mb-2 border-bottom pb-1">
+                    <i class="bi bi-tag"></i> {{ group.label }}
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Pozycja</th>
+                                <th class="text-end" style="width:90px;">Cena</th>
+                                <th class="text-center" style="width:100px;">Ilość</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in group.items %}
+                            <tr>
+                                <td>
+                                    <span class="fw-semibold">{{ entry.item.name }}</span>
+                                    {% if entry.item.description %}
+                                    <br><small class="text-muted">{{ entry.item.description }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-nowrap">{{ entry.item.price }} zł</td>
+                                <td>
+                                    <input type="number" name="qty_{{ entry.item.id }}"
+                                           class="form-control form-control-sm text-center menu-qty"
+                                           data-price="{{ entry.item.price }}"
+                                           value="{{ entry.qty }}" min="0" max="999">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endfor %}
+
+                <!-- Podsumowanie -->
+                <div class="card bg-light mt-3 mb-3">
+                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="bi bi-calculator"></i> Suma menu:</strong>
+                        </div>
+                        <div>
+                            <span class="fs-5 fw-bold text-primary" id="menuTotal">0.00 zł</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> Złóż rezerwację
+                    </button>
+                    <a href="{% url 'embed_booking_menu_skip' restaurant.booking_slug booking.pk %}"
+                       class="btn btn-outline-secondary">
+                        Pomiń wybór menu →
+                    </a>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    <div class="powered-by">
+        Powered by <a href="/" target="_blank">EventBook</a>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('.menu-qty');
+    const totalEl = document.getElementById('menuTotal');
+    if (!totalEl) return;
+
+    function recalc() {
+        let total = 0;
+        inputs.forEach(function(inp) {
+            const qty = parseInt(inp.value) || 0;
+            const price = parseFloat(inp.dataset.price) || 0;
+            total += qty * price;
+        });
+        totalEl.textContent = total.toFixed(2) + ' zł';
+    }
+
+    inputs.forEach(function(inp) {
+        inp.addEventListener('input', recalc);
+    });
+    recalc();
+});
+</script>
+</body>
+</html>

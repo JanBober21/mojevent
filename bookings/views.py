@@ -1760,6 +1760,12 @@ def embed_booking(request, slug):
         "cal_next": cal_next,
     }
 
+    # Sprawdź czy firma ma menu (do wyświetlenia steppera)
+    _active_menu = Menu.objects.filter(restaurant=restaurant, is_active=True).first()
+    ctx["has_menu"] = _active_menu and MenuItem.objects.filter(
+        restaurant=restaurant, is_visible=True, menu=_active_menu,
+    ).exists()
+
     if request.method == "POST":
         form = BookingForm(request.POST, firm_type=restaurant.firm_type)
         if form.is_valid():
@@ -1810,6 +1816,14 @@ def embed_booking(request, slug):
                                 content=restaurant.welcome_message.strip(),
                             )
 
+                    # Sprawdź czy firma ma aktywne menu → krok 2
+                    active_menu = Menu.objects.filter(restaurant=restaurant, is_active=True).first()
+                    has_menu = active_menu and MenuItem.objects.filter(
+                        restaurant=restaurant, is_visible=True, menu=active_menu,
+                    ).exists()
+                    if has_menu:
+                        return redirect("embed_booking_menu", slug=slug, booking_pk=booking.pk)
+
                     ctx["success"] = True
                     ctx["booking"] = booking
                     ctx["form"] = form
@@ -1842,6 +1856,78 @@ def embed_calendar_partial(request, slug):
         "cal_month": cal_month,
         "cal_prev": cal_prev,
         "cal_next": cal_next,
+    })
+
+
+def embed_booking_menu(request, slug, booking_pk):
+    """Krok 2: wybór menu w publicznym formularzu rezerwacji."""
+    restaurant = get_object_or_404(
+        Restaurant, booking_slug=slug, embed_enabled=True, is_active=True,
+    )
+    booking = get_object_or_404(Booking, pk=booking_pk, restaurant=restaurant)
+
+    active_menu = Menu.objects.filter(restaurant=restaurant, is_active=True).first()
+    menu_items = MenuItem.objects.filter(
+        restaurant=restaurant, is_visible=True, menu=active_menu,
+    ) if active_menu else MenuItem.objects.none()
+
+    if not menu_items.exists():
+        return render(request, "bookings/embed_booking.html", {
+            "restaurant": restaurant,
+            "success": True,
+            "booking": booking,
+        })
+
+    if request.method == "POST":
+        # Zapisz wybrane pozycje menu
+        booking.menu_selections.all().delete()
+        for item in menu_items:
+            qty_str = request.POST.get(f"qty_{item.id}", "0")
+            try:
+                qty = int(qty_str)
+            except ValueError:
+                qty = 0
+            if qty > 0:
+                BookingMenuItem.objects.create(
+                    booking=booking,
+                    menu_item=item,
+                    quantity=qty,
+                )
+
+        return render(request, "bookings/embed_booking_menu.html", {
+            "restaurant": restaurant,
+            "booking": booking,
+            "success": True,
+        })
+
+    # Przygotuj dane menu
+    categories = MenuItem.Category.choices
+    menu_by_category = []
+    for cat_value, cat_label in categories:
+        items = menu_items.filter(category=cat_value)
+        items_with_qty = []
+        for item in items:
+            items_with_qty.append({"item": item, "qty": 0})
+        if items_with_qty:
+            menu_by_category.append({"label": cat_label, "items": items_with_qty})
+
+    return render(request, "bookings/embed_booking_menu.html", {
+        "restaurant": restaurant,
+        "booking": booking,
+        "menu_by_category": menu_by_category,
+    })
+
+
+def embed_booking_menu_skip(request, slug, booking_pk):
+    """Pominięcie wyboru menu — przejdź do ekranu sukcesu."""
+    restaurant = get_object_or_404(
+        Restaurant, booking_slug=slug, embed_enabled=True, is_active=True,
+    )
+    booking = get_object_or_404(Booking, pk=booking_pk, restaurant=restaurant)
+    return render(request, "bookings/embed_booking_menu.html", {
+        "restaurant": restaurant,
+        "booking": booking,
+        "success": True,
     })
 
 

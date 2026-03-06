@@ -55,6 +55,14 @@
             color: #999;
         }
         .powered-by a { color: #7c3aed; text-decoration: none; }
+        .stepper { display: flex; gap: .5rem; align-items: center; justify-content: center; }
+        .stepper .step {
+            display: flex; align-items: center; gap: .35rem;
+            font-size: .85rem; color: #aaa;
+        }
+        .stepper .step.active { color: var(--accent, #7c3aed); font-weight: 600; }
+        .stepper .step.done { color: #198754; }
+        .stepper .step-line { width: 2rem; height: 2px; background: #ddd; }
     </style>
     {% if restaurant.scraped_css %}
     <style>
@@ -78,6 +86,19 @@
             </div>
         </div>
         <div class="card-body p-4">
+            {% if has_menu %}
+            <div class="stepper mb-4">
+                <div class="step {% if success %}done{% else %}active{% endif %}">
+                    {% if success %}<i class="bi bi-check-circle-fill"></i>{% else %}<i class="bi bi-circle-fill" style="font-size:.5rem;"></i>{% endif %}
+                    Dane rezerwacji
+                </div>
+                <div class="step-line"></div>
+                <div class="step">
+                    <i class="bi bi-circle" style="font-size:.5rem;"></i> Wybór menu
+                </div>
+            </div>
+            {% endif %}
+
             {% if success %}
             <div class="text-center py-4">
                 <i class="bi bi-check-circle text-success" style="font-size:3rem;"></i>
@@ -89,7 +110,7 @@
                     {% if booking.event_start_time %} · {{ booking.event_start_time|time:"H:i" }}{% endif %}
                     {% if booking.guest_count %}<br><i class="bi bi-people"></i> {{ booking.guest_count }} gości{% endif %}
                 </div>
-                <a href="" class="btn btn-outline-primary mt-3"><i class="bi bi-plus-circle"></i> Nowa rezerwacja</a>
+                <a href="{% url 'embed_booking' restaurant.booking_slug %}" class="btn btn-outline-primary mt-3"><i class="bi bi-plus-circle"></i> Nowa rezerwacja</a>
             </div>
             {% else %}
 
@@ -200,7 +221,11 @@
 
                 <div class="mt-4 d-grid">
                     <button type="submit" class="btn btn-primary btn-lg">
+                        {% if has_menu %}
+                        <i class="bi bi-arrow-right-circle"></i> Dalej — wybór menu
+                        {% else %}
                         <i class="bi bi-check-circle"></i> Złóż rezerwację
+                        {% endif %}
                     </button>
                 </div>
             </form>

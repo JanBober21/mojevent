@@ -50,6 +50,8 @@ urlpatterns = [
     # Formularz rezerwacji na zewnętrzną stronę (embed)
     path("rezerwacja/<slug:slug>/", views.embed_booking, name="embed_booking"),
     path("rezerwacja/<slug:slug>/kalendarz/", views.embed_calendar_partial, name="embed_calendar_partial"),
+    path("rezerwacja/<slug:slug>/menu/<int:booking_pk>/", views.embed_booking_menu, name="embed_booking_menu"),
+    path("rezerwacja/<slug:slug>/menu/<int:booking_pk>/pomin/", views.embed_booking_menu_skip, name="embed_booking_menu_skip"),
     path("owner/embed/", views.owner_generate_embed, name="owner_generate_embed"),
 
     # Zapisane menu

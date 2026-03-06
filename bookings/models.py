@@ -37,6 +37,8 @@ class Restaurant(models.Model):
     phone = models.CharField("Telefon", max_length=20)
     email = models.EmailField("E-mail", blank=True)
     website = models.URLField("Strona WWW", blank=True)
+    facebook_url = models.URLField("Facebook", blank=True)
+    instagram_url = models.URLField("Instagram", blank=True)
     image = models.ImageField("Zdjęcie", upload_to="restaurants/", blank=True, null=True)
     image_url = models.URLField("Link do zdjęcia", blank=True, help_text="Alternatywa dla przesłanego pliku")
     max_guests = models.PositiveIntegerField("Maks. liczba gości", default=100)

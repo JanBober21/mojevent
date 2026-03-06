@@ -60,6 +60,7 @@ urlpatterns = [
 
     # API
     path("api/menu-suggestions/", views.menu_suggestions_api, name="menu_suggestions_api"),
+    path("api/social-import/", views.social_import_api, name="social_import_api"),
 
     # Konto
     path("konto/", views.account_settings, name="account_settings"),

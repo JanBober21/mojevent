@@ -14,6 +14,7 @@ import calendar as cal_module
 from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 from .style_scraper import scrape_styles
+from .social_scraper import import_from_social
 
 
 def _get_owner_context(request):
@@ -690,6 +691,36 @@ def _save_gallery_images(request, restaurant):
                 caption=caption,
                 order=max_order,
             )
+
+    # Add images imported from social media
+    social_urls = request.POST.getlist("social_image_url")
+    for url in social_urls:
+        url = url.strip()
+        if url and not RestaurantImage.objects.filter(restaurant=restaurant, image_url=url).exists():
+            max_order += 1
+            RestaurantImage.objects.create(
+                restaurant=restaurant,
+                image_url=url,
+                caption="Import z social media",
+                order=max_order,
+            )
+
+
+@login_required
+def social_import_api(request):
+    """AJAX endpoint: pobierz dane firmy z Facebooka / Instagrama."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    body = json.loads(request.body) if request.content_type == "application/json" else request.POST
+    facebook_url = body.get("facebook_url", "").strip()
+    instagram_url = body.get("instagram_url", "").strip()
+
+    if not facebook_url and not instagram_url:
+        return JsonResponse({"error": "Podaj link do Facebooka lub Instagrama."}, status=400)
+
+    data = import_from_social(facebook_url=facebook_url, instagram_url=instagram_url)
+    return JsonResponse(data)
 
 
 @login_required

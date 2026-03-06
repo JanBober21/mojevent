@@ -50,6 +50,33 @@
                         </div>
                     </div>
 
+                    <!-- ── Import z social media ── -->
+                    <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-download"></i> Import danych z social media</h5>
+                    <p class="text-muted small mb-3">
+                        Wklej link do profilu na Facebooku lub Instagramie i kliknij <strong>Pobierz</strong>, aby automatycznie uzupełnić dane firmy i zdjęcia.
+                    </p>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label"><i class="bi bi-facebook"></i> Facebook</label>
+                            {{ form.facebook_url }}
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label"><i class="bi bi-instagram"></i> Instagram</label>
+                            {{ form.instagram_url }}
+                        </div>
+                        <div class="col-md-2 d-grid">
+                            <button type="button" class="btn btn-outline-primary" id="social-import-btn">
+                                <i class="bi bi-download"></i> Pobierz
+                            </button>
+                        </div>
+                    </div>
+                    <div id="social-import-status" class="mt-2" style="display:none;"></div>
+                    <!-- Podgląd pobranych zdjęć -->
+                    <div id="social-import-preview" class="mt-3" style="display:none;">
+                        <p class="text-muted small mb-2">Pobrane zdjęcia — kliknij aby usunąć:</p>
+                        <div class="row g-2" id="social-images-row"></div>
+                    </div>
+
                     <h5 class="mt-4 mb-3 border-bottom pb-2"><i class="bi bi-info-circle"></i> Informacje podstawowe</h5>
                     <div class="row g-3">
                         <div class="col-12">
@@ -490,6 +517,125 @@ document.addEventListener('DOMContentLoaded', function() {
             btnGeocode.innerHTML = '<i class="bi bi-search"></i> Pobierz z adresu';
         });
     });
+
+    // ── Social Media Import ──────────────────────────────────────────────
+    const socialBtn = document.getElementById('social-import-btn');
+    const socialStatus = document.getElementById('social-import-status');
+    const socialPreview = document.getElementById('social-import-preview');
+    const socialImagesRow = document.getElementById('social-images-row');
+
+    if (socialBtn) {
+        socialBtn.addEventListener('click', function() {
+            const fbUrl = document.getElementById('id_facebook_url')?.value?.trim() || '';
+            const igUrl = document.getElementById('id_instagram_url')?.value?.trim() || '';
+
+            if (!fbUrl && !igUrl) {
+                socialStatus.style.display = 'block';
+                socialStatus.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="bi bi-exclamation-triangle"></i> Podaj link do Facebooka lub Instagrama.</div>';
+                return;
+            }
+
+            socialBtn.disabled = true;
+            socialBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Pobieram…';
+            socialStatus.style.display = 'block';
+            socialStatus.innerHTML = '<div class="alert alert-info py-2 mb-0"><i class="bi bi-hourglass-split"></i> Pobieranie danych, proszę czekać…</div>';
+
+            fetch('{% url "social_import_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: JSON.stringify({ facebook_url: fbUrl, instagram_url: igUrl }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    socialStatus.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="bi bi-x-circle"></i> ' + data.error + '</div>';
+                    return;
+                }
+
+                let filled = [];
+
+                // Wypełnij pola formularza jeśli są puste
+                const nameField = document.getElementById('id_name');
+                if (nameField && !nameField.value && data.name) {
+                    nameField.value = data.name;
+                    filled.push('nazwa');
+                }
+
+                const descField = document.getElementById('id_description');
+                if (descField && !descField.value && data.description) {
+                    descField.value = data.description;
+                    filled.push('opis');
+                }
+
+                const phoneField = document.getElementById('id_phone');
+                if (phoneField && !phoneField.value && data.phone) {
+                    phoneField.value = data.phone;
+                    filled.push('telefon');
+                }
+
+                const websiteField = document.getElementById('id_website');
+                if (websiteField && !websiteField.value && data.website) {
+                    websiteField.value = data.website;
+                    filled.push('strona www');
+                }
+
+                const addressField = document.getElementById('id_address');
+                if (addressField && !addressField.value && data.address) {
+                    addressField.value = data.address;
+                    filled.push('adres');
+                }
+
+                const cityField = document.getElementById('id_city');
+                if (cityField && !cityField.value && data.city) {
+                    cityField.value = data.city;
+                    filled.push('miasto');
+                }
+
+                const imgUrlField = document.getElementById('id_image_url');
+                if (imgUrlField && !imgUrlField.value && data.image_url) {
+                    imgUrlField.value = data.image_url;
+                    filled.push('zdjęcie główne');
+                }
+
+                // Pokaż pobrane zdjęcia
+                if (data.images && data.images.length > 0) {
+                    socialPreview.style.display = 'block';
+                    socialImagesRow.innerHTML = '';
+                    data.images.forEach(function(imgUrl, idx) {
+                        const col = document.createElement('div');
+                        col.className = 'col-4 col-md-2';
+                        col.innerHTML =
+                            '<div class="position-relative social-img-card" style="cursor:pointer" title="Kliknij aby usunąć">' +
+                            '<img src="' + imgUrl + '" class="img-fluid rounded" style="height:80px;width:100%;object-fit:cover;" onerror="this.parentElement.parentElement.remove()">' +
+                            '<input type="hidden" name="social_image_url" value="' + imgUrl + '">' +
+                            '</div>';
+                        col.querySelector('.social-img-card').addEventListener('click', function() {
+                            col.remove();
+                            if (!socialImagesRow.children.length) socialPreview.style.display = 'none';
+                        });
+                        socialImagesRow.appendChild(col);
+                    });
+                    filled.push(data.images.length + ' zdjęć');
+                }
+
+                if (filled.length > 0) {
+                    socialStatus.innerHTML = '<div class="alert alert-success py-2 mb-0"><i class="bi bi-check-circle"></i> Pobrano: ' + filled.join(', ') + '. Sprawdź i uzupełnij pozostałe pola.</div>';
+                } else {
+                    socialStatus.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle"></i> Nie udało się pobrać danych. Profil może być prywatny lub niedostępny.</div>';
+                }
+            })
+            .catch(err => {
+                socialStatus.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="bi bi-x-circle"></i> Błąd połączenia. Spróbuj ponownie.</div>';
+            })
+            .finally(() => {
+                socialBtn.disabled = false;
+                socialBtn.innerHTML = '<i class="bi bi-download"></i> Pobierz';
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

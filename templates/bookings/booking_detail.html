@@ -70,7 +70,7 @@
                         </p>
                         {% endif %}
 
-                        <h6 class="text-muted">Szacunkowy koszt</h6>
+                        <h6 class="text-muted">{% if booking.menu_selections.count %}Koszt{% else %}Szacunkowy koszt{% endif %}</h6>
                         <p class="fs-4 text-primary fw-bold">{{ booking.total_cost }} zł</p>
 
                         {% if booking.notes %}

@@ -10,6 +10,7 @@ urlpatterns = [
     # Restauracje
     path("restauracje/", views.restaurant_list, name="restaurant_list"),
     path("restauracje/<int:pk>/", views.restaurant_detail, name="restaurant_detail"),
+    path("restauracje/<int:pk>/kalendarz/", views.restaurant_calendar_partial, name="restaurant_calendar_partial"),
 
     # Rezerwacje
     path(

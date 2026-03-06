@@ -88,7 +88,11 @@ class Restaurant(models.Model):
     show_calendar = models.BooleanField(
         "Pokaż kalendarz dostępności",
         default=False,
-        help_text="Wyświetla kalendarz z wolnymi/zajętymi terminami na stronie firmy (tylko Imprezy w lokalu).",
+        help_text="Wyświetla kalendarz z wolnymi/zajętymi terminami na stronie firmy.",
+    )
+    max_events_per_day = models.PositiveIntegerField(
+        "Maks. wydarzeń dziennie", default=1,
+        help_text="Ile rezerwacji może mieć jedno miejsce w jednym dniu.",
     )
 
     # ── Formularz rezerwacji na zewnętrzną stronę ──────────────────────────
@@ -147,6 +151,20 @@ class Restaurant(models.Model):
             if getattr(self, f"{code}_open") and getattr(self, f"{code}_close"):
                 return True
         return False
+
+    # Mapping: Python weekday (0=Mon) → field prefix
+    _WEEKDAY_PREFIX = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+    def is_day_closed(self, d):
+        """Return True if the restaurant is closed on date *d*.
+
+        A day is closed when working hours are configured AND the weekday
+        has no opening time set.
+        """
+        if not self.has_working_hours():
+            return False  # no hours set → assume always open
+        prefix = self._WEEKDAY_PREFIX[d.weekday()]
+        return getattr(self, f"{prefix}_open") is None
 
     def average_rating(self):
         reviews = self.reviews.all()
@@ -227,6 +245,34 @@ class EventType(models.TextChoices):
     OTHER = "other", "Inne"
 
 
+class BlockedDate(models.Model):
+    """Dzień zablokowany ręcznie przez właściciela (np. remont, urlop)."""
+
+    restaurant = models.ForeignKey(
+        "Restaurant",
+        on_delete=models.CASCADE,
+        related_name="blocked_dates",
+        verbose_name="Firma",
+    )
+    date = models.DateField("Data")
+    reason = models.CharField("Powód", max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Zablokowany dzień"
+        verbose_name_plural = "Zablokowane dni"
+        ordering = ["date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["restaurant", "date"],
+                name="unique_blocked_date",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.restaurant.name} — {self.date:%d.%m.%Y}"
+
+
 class Booking(models.Model):
     """Rezerwacja restauracji na uroczystość."""
 
@@ -287,7 +333,8 @@ class Booking(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["restaurant", "event_date"],
-                name="unique_restaurant_date",
+                condition=models.Q(status__in=["pending", "confirmed"]),
+                name="unique_active_restaurant_date",
             )
         ]
 

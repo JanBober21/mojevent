@@ -133,7 +133,7 @@
                 {% endif %}
 
                 <!-- Kalendarz -->
-                {% if calendar_data %}
+                {% if cal %}
                 <h6 class="mb-2"><i class="bi bi-calendar-event"></i> Wybierz datę</h6>
                 <div class="card shadow-sm mb-3" id="calendar-wrapper"
                      data-url="{% url 'embed_calendar_partial' restaurant.booking_slug %}">

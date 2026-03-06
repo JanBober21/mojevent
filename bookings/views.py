@@ -9,12 +9,12 @@ from django.utils import timezone
 from datetime import datetime, timedelta, date
 import json
 import math
-import calendar as cal_module
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 from .style_scraper import scrape_styles
 from .social_scraper import import_from_urls, detect_platform, PLATFORM_LABELS, PLATFORM_ICONS
+from .calendar_utils import build_month_grid, get_day_details, MONTH_NAMES_PL
 
 
 def _get_owner_context(request):
@@ -218,63 +218,11 @@ def restaurant_detail(request, pk):
                 attraction_items.append({"label": tag_label, "items": items})
 
     # Kalendarz dostępności (tylko venue z włączonym show_calendar)
-    calendar_data = None
-    cal_year = None
-    cal_month = None
-    cal_prev = None
-    cal_next = None
+    cal = None
     if restaurant.firm_type == Restaurant.FirmType.VENUE and restaurant.show_calendar:
-        today = timezone.now().date()
-        try:
-            cal_year = int(request.GET.get("cal_year", today.year))
-            cal_month = int(request.GET.get("cal_month", today.month))
-        except (ValueError, TypeError):
-            cal_year, cal_month = today.year, today.month
-        # Clamp to not go before current month
-        if (cal_year, cal_month) < (today.year, today.month):
-            cal_year, cal_month = today.year, today.month
-
-        first_day, num_days = cal_module.monthrange(cal_year, cal_month)
-        # Booked dates this month
-        booked_dates = set(
-            Booking.objects.filter(
-                restaurant=restaurant,
-                event_date__year=cal_year,
-                event_date__month=cal_month,
-            ).exclude(status="cancelled").values_list("event_date", flat=True)
-        )
-        weeks = []
-        week = [None] * first_day  # pad start (Monday=0)
-        for day in range(1, num_days + 1):
-            d = date(cal_year, cal_month, day)
-            is_past = d < today
-            is_booked = d in booked_dates
-            week.append({
-                "day": day,
-                "date": d,
-                "past": is_past,
-                "booked": is_booked,
-                "free": not is_past and not is_booked,
-            })
-            if len(week) == 7:
-                weeks.append(week)
-                week = []
-        if week:
-            week.extend([None] * (7 - len(week)))
-            weeks.append(week)
-        calendar_data = weeks
-
-        # Prev/next month links
-        if cal_month == 1:
-            prev_y, prev_m = cal_year - 1, 12
-        else:
-            prev_y, prev_m = cal_year, cal_month - 1
-        if (prev_y, prev_m) >= (today.year, today.month):
-            cal_prev = {"year": prev_y, "month": prev_m}
-        if cal_month == 12:
-            cal_next = {"year": cal_year + 1, "month": 1}
-        else:
-            cal_next = {"year": cal_year, "month": cal_month + 1}
+        cal_year = request.GET.get("cal_year")
+        cal_month = request.GET.get("cal_month")
+        cal = build_month_grid(restaurant, cal_year, cal_month)
 
     return render(request, "bookings/restaurant_detail.html", {
         "restaurant": restaurant,
@@ -284,65 +232,19 @@ def restaurant_detail(request, pk):
         "is_menu_saved": is_menu_saved,
         "attraction_items": attraction_items,
         "gallery_images": restaurant.gallery_images.all(),
-        "calendar_data": calendar_data,
-        "cal_year": cal_year,
-        "cal_month": cal_month,
-        "cal_prev": cal_prev,
-        "cal_next": cal_next,
+        "cal": cal,
     })
 
 
 def restaurant_calendar_partial(request, pk):
     """AJAX endpoint – zwraca HTML kalendarza dla danego miesiąca."""
     restaurant = get_object_or_404(Restaurant, pk=pk, is_active=True)
-    today = timezone.now().date()
-    try:
-        cal_year = int(request.GET.get("cal_year", today.year))
-        cal_month = int(request.GET.get("cal_month", today.month))
-    except (ValueError, TypeError):
-        cal_year, cal_month = today.year, today.month
-    if (cal_year, cal_month) < (today.year, today.month):
-        cal_year, cal_month = today.year, today.month
-
-    first_day, num_days = cal_module.monthrange(cal_year, cal_month)
-    booked_dates = set(
-        Booking.objects.filter(
-            restaurant=restaurant,
-            event_date__year=cal_year,
-            event_date__month=cal_month,
-        ).exclude(status="cancelled").values_list("event_date", flat=True)
+    cal = build_month_grid(
+        restaurant,
+        request.GET.get("cal_year"),
+        request.GET.get("cal_month"),
     )
-    weeks = []
-    week = [None] * first_day
-    for day in range(1, num_days + 1):
-        d = date(cal_year, cal_month, day)
-        is_past = d < today
-        is_booked = d in booked_dates
-        week.append({"day": day, "date": d, "past": is_past, "booked": is_booked, "free": not is_past and not is_booked})
-        if len(week) == 7:
-            weeks.append(week)
-            week = []
-    if week:
-        week.extend([None] * (7 - len(week)))
-        weeks.append(week)
-
-    if cal_month == 1:
-        prev_y, prev_m = cal_year - 1, 12
-    else:
-        prev_y, prev_m = cal_year, cal_month - 1
-    cal_prev = {"year": prev_y, "month": prev_m} if (prev_y, prev_m) >= (today.year, today.month) else None
-    if cal_month == 12:
-        cal_next = {"year": cal_year + 1, "month": 1}
-    else:
-        cal_next = {"year": cal_year, "month": cal_month + 1}
-
-    return render(request, "bookings/_calendar_partial.html", {
-        "calendar_data": weeks,
-        "cal_year": cal_year,
-        "cal_month": cal_month,
-        "cal_prev": cal_prev,
-        "cal_next": cal_next,
-    })
+    return render(request, "bookings/_calendar_partial.html", {"cal": cal})
 
 
 # ── Rezerwacje ─────────────────────────────────────────────────────────────────
@@ -427,65 +329,18 @@ def booking_create(request, restaurant_pk):
         )
 
     # ── Kalendarz dostępności dla formularza rezerwacji ──────────────
-    today = timezone.now().date()
-    try:
-        cal_year = int(request.GET.get("cal_year", today.year))
-        cal_month = int(request.GET.get("cal_month", today.month))
-    except (ValueError, TypeError):
-        cal_year, cal_month = today.year, today.month
-    if (cal_year, cal_month) < (today.year, today.month):
-        cal_year, cal_month = today.year, today.month
-
-    first_day, num_days = cal_module.monthrange(cal_year, cal_month)
-    booked_dates = set(
-        Booking.objects.filter(
-            restaurant=restaurant,
-            event_date__year=cal_year,
-            event_date__month=cal_month,
-        ).exclude(status="cancelled").values_list("event_date", flat=True)
+    cal = build_month_grid(
+        restaurant,
+        request.GET.get("cal_year"),
+        request.GET.get("cal_month"),
+        date_as_iso=True,
     )
-    weeks = []
-    week = [None] * first_day
-    for day in range(1, num_days + 1):
-        d = date(cal_year, cal_month, day)
-        is_past = d < today
-        is_booked = d in booked_dates
-        week.append({
-            "day": day,
-            "date": d.isoformat(),
-            "past": is_past,
-            "booked": is_booked,
-            "free": not is_past and not is_booked,
-        })
-        if len(week) == 7:
-            weeks.append(week)
-            week = []
-    if week:
-        week.extend([None] * (7 - len(week)))
-        weeks.append(week)
-
-    cal_prev = None
-    cal_next = None
-    if cal_month == 1:
-        prev_y, prev_m = cal_year - 1, 12
-    else:
-        prev_y, prev_m = cal_year, cal_month - 1
-    if (prev_y, prev_m) >= (today.year, today.month):
-        cal_prev = {"year": prev_y, "month": prev_m}
-    if cal_month == 12:
-        cal_next = {"year": cal_year + 1, "month": 1}
-    else:
-        cal_next = {"year": cal_year, "month": cal_month + 1}
 
     return render(request, "bookings/booking_form.html", {
         "form": form,
         "restaurant": restaurant,
         "is_attraction": is_attraction,
-        "calendar_data": weeks,
-        "cal_year": cal_year,
-        "cal_month": cal_month,
-        "cal_prev": cal_prev,
-        "cal_next": cal_next,
+        "cal": cal,
     })
 
 
@@ -983,7 +838,7 @@ def owner_booking_agreement(request, booking_id):
 
 @login_required
 def owner_calendar(request):
-    """Kalendarz rezerwacji restauracji — widok miesięczny."""
+    """Kalendarz rezerwacji restauracji — widok miesięczny (AJAX-ready)."""
     memberships, restaurant, membership = _get_owner_context(request)
     if memberships is None:
         messages.error(request, "Nie masz uprawnień do zarządzania firmą.")
@@ -991,91 +846,91 @@ def owner_calendar(request):
     if not restaurant:
         return redirect("owner_restaurant_create")
 
-    # Obsługa nawigacji miesięcy
     today = timezone.now().date()
-    try:
-        year = int(request.GET.get("year", today.year))
-        month = int(request.GET.get("month", today.month))
-        if month < 1 or month > 12:
-            raise ValueError
-    except (ValueError, TypeError):
-        year, month = today.year, today.month
+    year = request.GET.get("year", today.year)
+    month = request.GET.get("month", today.month)
 
-    # Poprzedni / następny miesiąc
-    if month == 1:
-        prev_month, prev_year = 12, year - 1
-    else:
-        prev_month, prev_year = month - 1, year
-    if month == 12:
-        next_month, next_year = 1, year + 1
-    else:
-        next_month, next_year = month + 1, year
+    cal = build_month_grid(restaurant, year, month, include_bookings=True)
 
-    # Polska nazwa miesiąca
-    MONTH_NAMES_PL = [
-        "", "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
-        "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień",
-    ]
-    month_name = MONTH_NAMES_PL[month]
-
-    # Rezerwacje w tym miesiącu
-    bookings = Booking.objects.filter(
-        restaurant=restaurant,
-        event_date__year=year,
-        event_date__month=month,
-    ).exclude(status=Booking.Status.CANCELLED).select_related('user')
-
-    # Mapuj rezerwacje na dni
-    bookings_by_day = {}
-    for b in bookings:
-        day = b.event_date.day
-        if day not in bookings_by_day:
-            bookings_by_day[day] = []
-        bookings_by_day[day].append({
-            "id": b.id,
-            "type_display": b.get_event_type_display(),
-            "guest_count": b.guest_count,
-            "status": b.status,
-            "client": f"{b.first_name} {b.last_name}",
-        })
-
-    # Buduj siatkę kalendarza (poniedziałek = 0)
-    first_weekday, days_in_month = cal_module.monthrange(year, month)
-    calendar_days = []
-
-    # Puste komórki przed pierwszym dniem
-    for _ in range(first_weekday):
-        calendar_days.append({"day": 0, "events": [], "is_today": False})
-
-    # Dni miesiąca
-    for day in range(1, days_in_month + 1):
-        is_today = (year == today.year and month == today.month and day == today.day)
-        calendar_days.append({
-            "day": day,
-            "events": bookings_by_day.get(day, []),
-            "is_today": is_today,
-        })
-
-    # Statystyki miesiąca
-    month_stats = {
-        "total": bookings.count(),
-        "confirmed": bookings.filter(status=Booking.Status.CONFIRMED).count(),
-        "pending": bookings.filter(status=Booking.Status.PENDING).count(),
-        "total_guests": sum(b.guest_count or 0 for b in bookings),
+    ctx = {
+        "restaurant": restaurant,
+        "cal": cal,
     }
 
-    return render(request, "bookings/owner/calendar.html", {
-        "restaurant": restaurant,
-        "calendar_days": calendar_days,
-        "year": year,
-        "month": month,
-        "month_name": month_name,
-        "prev_month": prev_month,
-        "prev_year": prev_year,
-        "next_month": next_month,
-        "next_year": next_year,
-        "month_stats": month_stats,
-    })
+    # AJAX request → return only the calendar partial
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return render(request, "bookings/owner/_calendar_grid.html", ctx)
+
+    return render(request, "bookings/owner/calendar.html", ctx)
+
+
+@login_required
+def owner_calendar_api(request):
+    """JSON API: calendar data, day details, block/unblock dates."""
+    memberships, restaurant, membership = _get_owner_context(request)
+    if not restaurant:
+        return JsonResponse({"error": "Brak firmy"}, status=404)
+
+    action = request.GET.get("action") or (
+        json.loads(request.body).get("action") if request.method == "POST" and request.content_type == "application/json" else request.POST.get("action")
+    )
+
+    # ── GET: month grid data ─────────────────────────────────────────────
+    if request.method == "GET" and action in (None, "month"):
+        year = request.GET.get("year")
+        month = request.GET.get("month")
+        cal = build_month_grid(restaurant, year, month, include_bookings=True, date_as_iso=True)
+        return JsonResponse(cal, safe=False)
+
+    # ── GET: day detail ──────────────────────────────────────────────────
+    if request.method == "GET" and action == "day":
+        try:
+            d = date.fromisoformat(request.GET["date"])
+        except (KeyError, ValueError):
+            return JsonResponse({"error": "Podaj datę w formacie YYYY-MM-DD"}, status=400)
+        detail = get_day_details(restaurant, d)
+        detail["date"] = detail["date"].isoformat()
+        detail["blocked"] = {
+            "is_blocked": detail["blocked"] is not None,
+            "reason": detail["blocked"].reason if detail["blocked"] else "",
+        }
+        for b in detail["bookings"]:
+            b["start_time"] = b["start_time"].strftime("%H:%M") if b["start_time"] else None
+            b["end_time"] = b["end_time"].strftime("%H:%M") if b["end_time"] else None
+            b["created_at"] = b["created_at"].isoformat() if b["created_at"] else None
+        return JsonResponse(detail)
+
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    body = json.loads(request.body) if request.content_type == "application/json" else request.POST
+
+    # ── POST: block date ─────────────────────────────────────────────────
+    if action == "block":
+        try:
+            d = date.fromisoformat(body.get("date", ""))
+        except ValueError:
+            return JsonResponse({"error": "Nieprawidłowa data"}, status=400)
+        reason = body.get("reason", "").strip()
+        obj, created = BlockedDate.objects.get_or_create(
+            restaurant=restaurant, date=d,
+            defaults={"reason": reason},
+        )
+        if not created:
+            obj.reason = reason
+            obj.save()
+        return JsonResponse({"ok": True, "created": created, "date": d.isoformat()})
+
+    # ── POST: unblock date ───────────────────────────────────────────────
+    if action == "unblock":
+        try:
+            d = date.fromisoformat(body.get("date", ""))
+        except ValueError:
+            return JsonResponse({"error": "Nieprawidłowa data"}, status=400)
+        deleted, _ = BlockedDate.objects.filter(restaurant=restaurant, date=d).delete()
+        return JsonResponse({"ok": True, "deleted": bool(deleted), "date": d.isoformat()})
+
+    return JsonResponse({"error": "Nieznana akcja"}, status=400)
 
 
 # ── Menu restauracji (panel właściciela) ──────────────────────────────────────────
@@ -1721,44 +1576,9 @@ def saved_menus_list(request):
 # ── Formularz rezerwacji na zewnętrzną stronę (embed) ──────────────────────────
 
 def _build_calendar(restaurant, cal_year, cal_month):
-    """Helper: generate calendar data for a given month."""
-    today = timezone.now().date()
-    if (cal_year, cal_month) < (today.year, today.month):
-        cal_year, cal_month = today.year, today.month
-
-    first_day, num_days = cal_module.monthrange(cal_year, cal_month)
-    booked_dates = set(
-        Booking.objects.filter(
-            restaurant=restaurant,
-            event_date__year=cal_year,
-            event_date__month=cal_month,
-        ).exclude(status="cancelled").values_list("event_date", flat=True)
-    )
-    weeks = []
-    week = [None] * first_day
-    for day in range(1, num_days + 1):
-        d = date(cal_year, cal_month, day)
-        is_past = d < today
-        is_booked = d in booked_dates
-        week.append({"day": day, "date": d, "past": is_past, "booked": is_booked, "free": not is_past and not is_booked})
-        if len(week) == 7:
-            weeks.append(week)
-            week = []
-    if week:
-        week.extend([None] * (7 - len(week)))
-        weeks.append(week)
-
-    if cal_month == 1:
-        prev_y, prev_m = cal_year - 1, 12
-    else:
-        prev_y, prev_m = cal_year, cal_month - 1
-    cal_prev = {"year": prev_y, "month": prev_m} if (prev_y, prev_m) >= (today.year, today.month) else None
-    if cal_month == 12:
-        cal_next = {"year": cal_year + 1, "month": 1}
-    else:
-        cal_next = {"year": cal_year, "month": cal_month + 1}
-
-    return weeks, cal_year, cal_month, cal_prev, cal_next
+    """Helper: generate calendar data for a given month (legacy wrapper)."""
+    cal = build_month_grid(restaurant, cal_year, cal_month)
+    return cal["weeks"], cal["year"], cal["month"], cal["prev"], cal["next"]
 
 
 def embed_booking(request, slug):
@@ -1779,20 +1599,14 @@ def embed_booking(request, slug):
         cal_year, cal_month = today.year, today.month
 
     show_cal = restaurant.firm_type == Restaurant.FirmType.VENUE and restaurant.show_calendar
-    calendar_data = cal_prev = cal_next = None
+    cal = None
     if show_cal:
-        calendar_data, cal_year, cal_month, cal_prev, cal_next = _build_calendar(
-            restaurant, cal_year, cal_month,
-        )
+        cal = build_month_grid(restaurant, cal_year, cal_month)
 
     ctx = {
         "restaurant": restaurant,
         "is_attraction": is_attraction,
-        "calendar_data": calendar_data,
-        "cal_year": cal_year,
-        "cal_month": cal_month,
-        "cal_prev": cal_prev,
-        "cal_next": cal_next,
+        "cal": cal,
     }
 
     # Sprawdź czy firma ma menu (do wyświetlenia steppera)
@@ -1875,23 +1689,12 @@ def embed_calendar_partial(request, slug):
     restaurant = get_object_or_404(
         Restaurant, booking_slug=slug, embed_enabled=True, is_active=True,
     )
-    today = timezone.now().date()
-    try:
-        cal_year = int(request.GET.get("cal_year", today.year))
-        cal_month = int(request.GET.get("cal_month", today.month))
-    except (ValueError, TypeError):
-        cal_year, cal_month = today.year, today.month
-
-    calendar_data, cal_year, cal_month, cal_prev, cal_next = _build_calendar(
-        restaurant, cal_year, cal_month,
+    cal = build_month_grid(
+        restaurant,
+        request.GET.get("cal_year"),
+        request.GET.get("cal_month"),
     )
-    return render(request, "bookings/_embed_calendar_partial.html", {
-        "calendar_data": calendar_data,
-        "cal_year": cal_year,
-        "cal_month": cal_month,
-        "cal_prev": cal_prev,
-        "cal_next": cal_next,
-    })
+    return render(request, "bookings/_embed_calendar_partial.html", {"cal": cal})
 
 
 def embed_booking_menu(request, slug, booking_pk):

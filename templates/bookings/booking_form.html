@@ -41,23 +41,24 @@
                     <!-- ── Sekcja 1: Wybór daty z kalendarzem ── -->
                     <h6 class="mb-3"><i class="bi bi-calendar-event"></i> Wybierz datę</h6>
 
-                    {% if calendar_data %}
+                    {% if cal %}
                     <div class="card shadow-sm mb-3">
                         <div class="card-header d-flex justify-content-between align-items-center py-2"
                              style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
-                            {% if cal_prev %}
-                            <a href="?cal_year={{ cal_prev.year }}&cal_month={{ cal_prev.month }}"
-                               class="btn btn-sm btn-outline-light"><i class="bi bi-chevron-left"></i></a>
+                            {% if cal.prev %}
+                            <button type="button" class="btn btn-sm btn-outline-light cal-nav-btn"
+                                    data-year="{{ cal.prev.year }}" data-month="{{ cal.prev.month }}">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
                             {% else %}
                             <span style="width:32px;"></span>
                             {% endif %}
-                            <strong>
-                                {% if cal_month == 1 %}Styczeń{% elif cal_month == 2 %}Luty{% elif cal_month == 3 %}Marzec{% elif cal_month == 4 %}Kwiecień{% elif cal_month == 5 %}Maj{% elif cal_month == 6 %}Czerwiec{% elif cal_month == 7 %}Lipiec{% elif cal_month == 8 %}Sierpień{% elif cal_month == 9 %}Wrzesień{% elif cal_month == 10 %}Październik{% elif cal_month == 11 %}Listopad{% elif cal_month == 12 %}Grudzień{% endif %}
-                                {{ cal_year }}
-                            </strong>
-                            {% if cal_next %}
-                            <a href="?cal_year={{ cal_next.year }}&cal_month={{ cal_next.month }}"
-                               class="btn btn-sm btn-outline-light"><i class="bi bi-chevron-right"></i></a>
+                            <strong>{{ cal.month_name }} {{ cal.year }}</strong>
+                            {% if cal.next %}
+                            <button type="button" class="btn btn-sm btn-outline-light cal-nav-btn"
+                                    data-year="{{ cal.next.year }}" data-month="{{ cal.next.month }}">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
                             {% else %}
                             <span style="width:32px;"></span>
                             {% endif %}
@@ -70,13 +71,15 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for week in calendar_data %}
+                                    {% for week in cal.weeks %}
                                     <tr>
                                         {% for cell in week %}
                                         <td style="height:42px; vertical-align:middle; cursor:{% if cell and cell.free %}pointer{% else %}default{% endif %};">
                                             {% if cell %}
                                                 {% if cell.past %}
                                                 <span class="text-muted">{{ cell.day }}</span>
+                                                {% elif cell.blocked or cell.closed %}
+                                                <span class="badge rounded-pill bg-secondary" style="min-width:28px;" title="Niedostępny">{{ cell.day }}</span>
                                                 {% elif cell.booked %}
                                                 <span class="badge rounded-pill bg-danger" style="min-width:28px;" title="Zajęty">{{ cell.day }}</span>
                                                 {% elif cell.free %}
@@ -94,7 +97,7 @@
                             <div class="d-flex gap-3 mt-2 small text-muted justify-content-center">
                                 <span><span class="badge rounded-pill bg-success">&nbsp;</span> Wolny</span>
                                 <span><span class="badge rounded-pill bg-danger">&nbsp;</span> Zajęty</span>
-                                <span class="text-muted">— Miniony</span>
+                                <span><span class="badge rounded-pill bg-secondary">&nbsp;</span> Niedostępny</span>
                             </div>
                         </div>
                     </div>
@@ -222,24 +225,63 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('id_event_date');
     if (!dateInput) return;
 
-    document.querySelectorAll('.cal-day').forEach(function(badge) {
-        badge.addEventListener('click', function() {
-            const isoDate = this.dataset.date;  // "YYYY-MM-DD"
-            dateInput.value = isoDate;
+    function bindCalDays() {
+        document.querySelectorAll('.cal-day').forEach(function(badge) {
+            badge.addEventListener('click', function() {
+                const isoDate = this.dataset.date;
+                dateInput.value = isoDate;
 
-            // Remove highlight from all
-            document.querySelectorAll('.cal-day').forEach(function(b) {
-                b.classList.remove('bg-primary');
-                b.classList.add('bg-success');
+                document.querySelectorAll('.cal-day').forEach(function(b) {
+                    b.classList.remove('bg-primary');
+                    b.classList.add('bg-success');
+                });
+                this.classList.remove('bg-success');
+                this.classList.add('bg-primary');
+
+                dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
             });
-            // Highlight selected
-            this.classList.remove('bg-success');
-            this.classList.add('bg-primary');
-
-            // Scroll to date field smoothly
-            dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
-    });
+    }
+
+    // AJAX calendar navigation (no page reload = form state preserved)
+    function bindCalNav() {
+        document.querySelectorAll('.cal-nav-btn[data-year]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const year = this.dataset.year;
+                const month = this.dataset.month;
+                const calCard = this.closest('.card');
+                if (!calCard) return;
+
+                fetch(`{% url 'booking_create' restaurant.pk %}?cal_year=${year}&cal_month=${month}`, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(r => r.text())
+                .then(html => {
+                    // Extract the calendar card from returned page
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newCal = doc.querySelector('.card.shadow-sm.mb-3');
+                    if (newCal) {
+                        calCard.outerHTML = newCal.outerHTML;
+                        bindCalDays();
+                        bindCalNav();
+                        // Re-highlight selected date if any
+                        if (dateInput.value) {
+                            const sel = document.querySelector('.cal-day[data-date="' + dateInput.value + '"]');
+                            if (sel) {
+                                sel.classList.remove('bg-success');
+                                sel.classList.add('bg-primary');
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    bindCalDays();
+    bindCalNav();
 });
 </script>
 {% endblock %}

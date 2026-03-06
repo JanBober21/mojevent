@@ -35,6 +35,7 @@ urlpatterns = [
     path("owner/booking/<int:booking_id>/", views.owner_booking_detail, name="owner_booking_detail"),
     path("owner/booking/<int:booking_id>/umowa/", views.owner_booking_agreement, name="owner_booking_agreement"),
     path("owner/calendar/", views.owner_calendar, name="owner_calendar"),
+    path("owner/calendar/api/", views.owner_calendar_api, name="owner_calendar_api"),
     path("owner/restauracja/dodaj/", views.owner_restaurant_create, name="owner_restaurant_create"),
     path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),
     path("owner/menu/", views.owner_menu, name="owner_menu"),

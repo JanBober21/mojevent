@@ -1,20 +1,17 @@
 <div class="card-header d-flex justify-content-between align-items-center py-2"
      style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
-    {% if cal_prev %}
+    {% if cal.prev %}
     <button type="button" class="btn btn-sm btn-outline-light cal-nav-btn"
-            data-year="{{ cal_prev.year }}" data-month="{{ cal_prev.month }}">
+            data-year="{{ cal.prev.year }}" data-month="{{ cal.prev.month }}">
         <i class="bi bi-chevron-left"></i>
     </button>
     {% else %}
     <span style="width:32px;"></span>
     {% endif %}
-    <strong>
-        {% if cal_month == 1 %}Styczeń{% elif cal_month == 2 %}Luty{% elif cal_month == 3 %}Marzec{% elif cal_month == 4 %}Kwiecień{% elif cal_month == 5 %}Maj{% elif cal_month == 6 %}Czerwiec{% elif cal_month == 7 %}Lipiec{% elif cal_month == 8 %}Sierpień{% elif cal_month == 9 %}Wrzesień{% elif cal_month == 10 %}Październik{% elif cal_month == 11 %}Listopad{% elif cal_month == 12 %}Grudzień{% endif %}
-        {{ cal_year }}
-    </strong>
-    {% if cal_next %}
+    <strong>{{ cal.month_name }} {{ cal.year }}</strong>
+    {% if cal.next %}
     <button type="button" class="btn btn-sm btn-outline-light cal-nav-btn"
-            data-year="{{ cal_next.year }}" data-month="{{ cal_next.month }}">
+            data-year="{{ cal.next.year }}" data-month="{{ cal.next.month }}">
         <i class="bi bi-chevron-right"></i>
     </button>
     {% else %}
@@ -29,13 +26,15 @@
             </tr>
         </thead>
         <tbody>
-            {% for week in calendar_data %}
+            {% for week in cal.weeks %}
             <tr>
                 {% for cell in week %}
                 <td style="height:42px; vertical-align:middle;">
                     {% if cell %}
                         {% if cell.past %}
                         <span class="text-muted">{{ cell.day }}</span>
+                        {% elif cell.blocked or cell.closed %}
+                        <span class="badge rounded-pill bg-secondary" style="min-width:28px;" title="Niedostępny">{{ cell.day }}</span>
                         {% elif cell.booked %}
                         <span class="badge rounded-pill bg-danger" style="min-width:28px;" title="Zajęty">{{ cell.day }}</span>
                         {% elif cell.free %}
@@ -51,6 +50,6 @@
     <div class="d-flex gap-3 mt-2 small text-muted justify-content-center">
         <span><span class="badge rounded-pill bg-success">&nbsp;</span> Wolny</span>
         <span><span class="badge rounded-pill bg-danger">&nbsp;</span> Zajęty</span>
-        <span class="text-muted">— Miniony</span>
+        <span><span class="badge rounded-pill bg-secondary">&nbsp;</span> Niedostępny</span>
     </div>
 </div>

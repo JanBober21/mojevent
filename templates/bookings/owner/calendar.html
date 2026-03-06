@@ -3,171 +3,368 @@
 {% block title %}Kalendarz — {{ restaurant.name }} — EventBook{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
-        <h1><i class="bi bi-calendar3"></i> Kalendarz</h1>
-        <p class="text-muted fs-5">{{ restaurant.name }} — {{ restaurant.city }}</p>
+        <h1 class="mb-1"><i class="bi bi-calendar3"></i> Kalendarz</h1>
+        <p class="text-muted fs-6 mb-0">{{ restaurant.name }} — {{ restaurant.city }}</p>
     </div>
-    <div>
-        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+    <div class="d-flex gap-2 flex-wrap">
+        <button id="btn-today" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-calendar-check"></i> Dziś
+        </button>
+        <a href="{% url 'owner_bookings' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-list-task"></i> Lista
+        </a>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-speedometer2"></i> Panel
         </a>
-        <a href="{% url 'owner_bookings' %}" class="btn btn-outline-primary">
-            <i class="bi bi-list-task"></i> Lista rezerwacji
-        </a>
     </div>
 </div>
 
-<!-- Nawigacja miesięcy -->
-<div class="card shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center py-3">
-        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-outline-primary btn-lg">
-            <i class="bi bi-chevron-left"></i>
-        </a>
-        <h3 class="mb-0" style="color: #7c3aed;">
-            <i class="bi bi-calendar-month"></i>
-            {{ month_name }} {{ year }}
-        </h3>
-        <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-outline-primary btn-lg">
-            <i class="bi bi-chevron-right"></i>
-        </a>
+<!-- Kalendarz container — replaced via AJAX -->
+<div id="calendar-container">
+    {% include "bookings/owner/_calendar_grid.html" %}
+</div>
+
+<!-- ── Day detail sidebar (offcanvas) ───────────────────────────────── -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="dayDetail" style="width:420px;max-width:90vw;">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="dayDetailTitle">
+            <i class="bi bi-calendar-day"></i> <span id="dd-date-label"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="dayDetailBody">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
     </div>
 </div>
 
-<!-- Legenda -->
-<div class="d-flex flex-wrap gap-3 mb-3">
-    <span class="badge bg-success"><i class="bi bi-circle-fill"></i> Potwierdzone</span>
-    <span class="badge bg-warning text-dark"><i class="bi bi-circle-fill"></i> Oczekujące</span>
-    <span class="badge bg-secondary"><i class="bi bi-circle-fill"></i> Zakończone</span>
+<!-- ── Block-date modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="blockModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-slash-circle"></i> Zablokuj dzień</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Data: <strong id="block-date-label"></strong></p>
+                <label for="block-reason" class="form-label">Powód (opcjonalnie)</label>
+                <input type="text" class="form-control" id="block-reason" placeholder="np. Remont, Prywatna impreza…">
+                <input type="hidden" id="block-date-value">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Anuluj</button>
+                <button type="button" class="btn btn-danger btn-sm" id="btn-confirm-block">
+                    <i class="bi bi-slash-circle"></i> Zablokuj
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Kalendarz - siatka -->
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <style>
-            .cal-grid {
-                display: grid;
-                grid-template-columns: repeat(7, 1fr);
-                border-top: 1px solid #dee2e6;
-                border-left: 1px solid #dee2e6;
-            }
-            .cal-header {
-                background: #7c3aed;
-                color: white;
-                text-align: center;
-                padding: 10px 4px;
-                font-weight: 600;
-                font-size: 0.85rem;
-                border-right: 1px solid rgba(255,255,255,0.2);
-                border-bottom: 1px solid rgba(255,255,255,0.2);
-            }
-            .cal-day {
-                min-height: 110px;
-                border-right: 1px solid #dee2e6;
-                border-bottom: 1px solid #dee2e6;
-                padding: 4px;
-                position: relative;
-                background: #fff;
-                transition: background 0.15s;
-            }
-            .cal-day:hover {
-                background: #f5f3ff;
-            }
-            .cal-day.cal-empty {
-                background: #fafaf8;
-            }
-            .cal-day.cal-today {
-                background: #ede9fe;
-                border: 2px solid #7c3aed;
-            }
-            .cal-day-number {
-                font-weight: 600;
-                font-size: 0.9rem;
-                color: #495057;
-                margin-bottom: 4px;
-            }
-            .cal-today .cal-day-number {
-                color: #7c3aed;
-            }
-            .cal-event {
-                display: block;
-                font-size: 0.72rem;
-                padding: 2px 5px;
-                margin-bottom: 2px;
-                border-radius: 3px;
-                color: #fff;
-                text-decoration: none;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                line-height: 1.4;
-            }
-            .cal-event:hover {
-                opacity: 0.85;
-                color: #fff;
-            }
-            .cal-event.status-confirmed { background: #198754; }
-            .cal-event.status-pending { background: #ffc107; color: #212529; }
-            .cal-event.status-completed { background: #6c757d; }
-            @media (max-width: 768px) {
-                .cal-day { min-height: 70px; }
-                .cal-event { font-size: 0.65rem; padding: 1px 3px; }
-                .cal-day-number { font-size: 0.8rem; }
-            }
-        </style>
+<style>
+/* ── Pro Calendar Styles ─────────────────────────────────────────────── */
+.cal-nav { user-select:none; }
+.cal-nav-btn {
+    width:40px; height:40px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #dee2e6; background:#fff; color:#7c3aed;
+    cursor:pointer; transition:all .15s;
+    font-size:1.1rem;
+}
+.cal-nav-btn:hover { background:#7c3aed; color:#fff; border-color:#7c3aed; }
+.cal-nav-btn:disabled,
+.cal-nav-btn.disabled { opacity:.35; pointer-events:none; }
 
-        <div class="cal-grid">
-            <!-- Nagłówki dni tygodnia -->
-            <div class="cal-header">Pon</div>
-            <div class="cal-header">Wt</div>
-            <div class="cal-header">Śr</div>
-            <div class="cal-header">Czw</div>
-            <div class="cal-header">Pt</div>
-            <div class="cal-header">Sob</div>
-            <div class="cal-header">Ndz</div>
+.cal-grid {
+    display:grid; grid-template-columns:repeat(7,1fr);
+    border-top:1px solid #e5e7eb; border-left:1px solid #e5e7eb;
+}
+.cal-header-cell {
+    background:#7c3aed; color:#fff;
+    text-align:center; padding:10px 4px;
+    font-weight:600; font-size:.8rem; text-transform:uppercase;
+    border-right:1px solid rgba(255,255,255,.2);
+    border-bottom:1px solid rgba(255,255,255,.2);
+}
+.cal-cell {
+    min-height:100px; border-right:1px solid #e5e7eb;
+    border-bottom:1px solid #e5e7eb; padding:6px;
+    position:relative; background:#fff;
+    cursor:pointer; transition:background .12s, box-shadow .12s;
+}
+.cal-cell:hover { background:#f5f3ff; z-index:1; box-shadow:inset 0 0 0 2px #c4b5fd; }
+.cal-cell.cal-empty { background:#fafaf8; cursor:default; pointer-events:none; }
+.cal-cell.cal-empty:hover { box-shadow:none; }
+.cal-cell.cal-past { background:#f9fafb; color:#9ca3af; }
+.cal-cell.cal-past:hover { background:#f3f4f6; }
+.cal-cell.cal-today { background:#ede9fe; box-shadow:inset 0 0 0 2px #7c3aed; }
+.cal-cell.cal-blocked { background:#fef2f2; }
+.cal-cell.cal-blocked .cal-day-num::after {
+    content:"🚫"; font-size:.65rem; margin-left:4px; vertical-align:middle;
+}
+.cal-cell.cal-closed { background:#f3f4f6; }
+.cal-cell.cal-closed .cal-day-num { color:#9ca3af; text-decoration:line-through; }
 
-            {% for day in calendar_days %}
-                {% if day.day == 0 %}
-                    <div class="cal-day cal-empty"></div>
-                {% else %}
-                    <div class="cal-day {% if day.is_today %}cal-today{% endif %}">
-                        <div class="cal-day-number">{{ day.day }}</div>
-                        {% for event in day.events %}
-                            <a href="{% url 'owner_booking_detail' event.id %}"
-                               class="cal-event status-{{ event.status }}"
-                               title="{{ event.type_display }} — {{ event.guest_count|default:'—' }} osób — {{ event.client }}">
-                                {{ event.type_display }} ({{ event.guest_count|default:'—' }})
-                            </a>
-                        {% endfor %}
+.cal-day-num {
+    font-weight:700; font-size:.85rem; color:#374151; margin-bottom:4px;
+}
+.cal-today .cal-day-num { color:#7c3aed; }
+
+/* Booking pills */
+.cal-booking {
+    display:block; font-size:.68rem; padding:2px 5px;
+    margin-bottom:2px; border-radius:4px;
+    color:#fff; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; line-height:1.4;
+    text-decoration:none;
+}
+.cal-booking:hover { opacity:.85; color:#fff; filter:brightness(1.1); }
+.cal-booking.st-confirmed { background:#16a34a; }
+.cal-booking.st-pending { background:#eab308; color:#1a1a1a; }
+.cal-booking.st-completed { background:#6b7280; }
+
+/* Slot indicator */
+.cal-slots {
+    position:absolute; bottom:3px; right:5px;
+    font-size:.6rem; color:#9ca3af;
+}
+.cal-slots.full { color:#dc2626; font-weight:600; }
+
+/* Stats bar */
+.stat-card {
+    text-align:center; padding:12px 8px;
+    border-radius:10px; background:#f5f3ff;
+    transition:transform .15s;
+}
+.stat-card:hover { transform:translateY(-2px); }
+.stat-val { font-size:1.5rem; font-weight:700; color:#7c3aed; }
+.stat-label { font-size:.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+
+/* Legend */
+.legend-dot {
+    display:inline-block; width:10px; height:10px;
+    border-radius:50%; margin-right:4px; vertical-align:middle;
+}
+
+/* Loading overlay */
+.cal-loading {
+    position:absolute; inset:0; background:rgba(255,255,255,.7);
+    display:flex; align-items:center; justify-content:center;
+    z-index:10; border-radius:12px;
+}
+
+@media(max-width:768px) {
+    .cal-cell { min-height:60px; padding:3px; }
+    .cal-booking { font-size:.6rem; padding:1px 3px; }
+    .cal-day-num { font-size:.75rem; }
+    .cal-slots { display:none; }
+    .stat-card { padding:8px 4px; }
+    .stat-val { font-size:1.1rem; }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById("calendar-container");
+    const API_URL = "{% url 'owner_calendar_api' %}";
+    const csrfToken = "{{ csrf_token }}";
+
+    let currentYear = {{ cal.year }};
+    let currentMonth = {{ cal.month }};
+
+    // ── AJAX calendar navigation ────────────────────────────────────────
+    function loadMonth(year, month) {
+        container.style.position = "relative";
+        let overlay = container.querySelector(".cal-loading");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.className = "cal-loading";
+            overlay.innerHTML = '<div class="spinner-border text-primary"></div>';
+            container.appendChild(overlay);
+        }
+        overlay.style.display = "flex";
+
+        fetch(`{% url 'owner_calendar' %}?year=${year}&month=${month}`, {
+            headers: {"X-Requested-With": "XMLHttpRequest"}
+        })
+        .then(r => r.text())
+        .then(html => {
+            container.innerHTML = html;
+            currentYear = year;
+            currentMonth = month;
+            bindCalendarEvents();
+        })
+        .catch(() => {
+            if (overlay) overlay.style.display = "none";
+        });
+    }
+
+    // ── Bind click events on calendar cells/nav ─────────────────────────
+    function bindCalendarEvents() {
+        container.querySelectorAll("[data-nav]").forEach(btn => {
+            btn.addEventListener("click", e => {
+                e.preventDefault();
+                const y = parseInt(btn.dataset.year);
+                const m = parseInt(btn.dataset.month);
+                if (y && m) loadMonth(y, m);
+            });
+        });
+
+        container.querySelectorAll(".cal-cell[data-date]").forEach(cell => {
+            cell.addEventListener("click", e => {
+                if (e.target.closest(".cal-booking")) return;
+                openDayDetail(cell.dataset.date);
+            });
+        });
+    }
+
+    // ── Today button ────────────────────────────────────────────────────
+    document.getElementById("btn-today").addEventListener("click", () => {
+        const now = new Date();
+        loadMonth(now.getFullYear(), now.getMonth() + 1);
+    });
+
+    // ── Day detail offcanvas ────────────────────────────────────────────
+    const offcanvasEl = document.getElementById("dayDetail");
+    const bsOffcanvas = new bootstrap.Offcanvas(offcanvasEl);
+
+    function openDayDetail(isoDate) {
+        const dateLabel = document.getElementById("dd-date-label");
+        const body = document.getElementById("dayDetailBody");
+
+        const d = new Date(isoDate + "T00:00:00");
+        const monthsPL = ["","Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec",
+                          "Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+        const daysPL = ["Niedziela","Poniedziałek","Wtorek","Środa","Czwartek","Piątek","Sobota"];
+        dateLabel.textContent = `${daysPL[d.getDay()]}, ${d.getDate()} ${monthsPL[d.getMonth()+1]} ${d.getFullYear()}`;
+
+        body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+        bsOffcanvas.show();
+
+        fetch(`${API_URL}?action=day&date=${isoDate}`)
+        .then(r => r.json())
+        .then(data => {
+            body.innerHTML = renderDayDetail(data, isoDate);
+        })
+        .catch(() => {
+            body.innerHTML = '<div class="alert alert-danger">Błąd ładowania</div>';
+        });
+    }
+
+    function renderDayDetail(data, isoDate) {
+        let html = "";
+
+        if (data.closed) {
+            html += '<div class="alert alert-secondary py-2 mb-3"><i class="bi bi-moon-stars"></i> Dzień zamknięty (godziny pracy)</div>';
+        }
+        if (data.blocked && data.blocked.is_blocked) {
+            html += `<div class="alert alert-danger py-2 mb-3">
+                <i class="bi bi-slash-circle"></i> Zablokowany${data.blocked.reason ? ': ' + data.blocked.reason : ''}
+                <button class="btn btn-sm btn-outline-danger float-end py-0" onclick="window._calUnblock('${isoDate}')">
+                    <i class="bi bi-unlock"></i> Odblokuj
+                </button>
+            </div>`;
+        }
+
+        html += `<div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted"><i class="bi bi-calendar-event"></i> ${data.booking_count}/${data.max_events} rezerwacji</span>
+            <span class="badge ${data.is_full ? 'bg-danger' : 'bg-success'}">${data.is_full ? 'Pełny' : data.slots_left + ' wolnych'}</span>
+        </div>`;
+
+        html += '<div class="d-flex gap-2 mb-3">';
+        if (!(data.blocked && data.blocked.is_blocked)) {
+            html += `<button class="btn btn-outline-danger btn-sm flex-fill" onclick="window._calBlock('${isoDate}')">
+                <i class="bi bi-slash-circle"></i> Zablokuj dzień
+            </button>`;
+        }
+        html += '</div>';
+
+        if (data.bookings && data.bookings.length > 0) {
+            html += '<h6 class="mt-3 mb-2"><i class="bi bi-list-check"></i> Rezerwacje</h6>';
+            data.bookings.forEach(b => {
+                const statusColors = {confirmed:"success", pending:"warning", completed:"secondary"};
+                const statusLabels = {confirmed:"Potwierdzona", pending:"Oczekująca", completed:"Zakończona"};
+                const color = statusColors[b.status] || "secondary";
+                const timeStr = b.start_time ? `${b.start_time}${b.end_time ? ' – ' + b.end_time : ''}` : '';
+
+                html += `<div class="card mb-2 border-${color}">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <strong>${b.type_display}</strong>
+                            <span class="badge bg-${color}">${statusLabels[b.status] || b.status}</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="bi bi-person"></i> ${b.client}
+                            ${b.guest_count ? ' · <i class="bi bi-people"></i> ' + b.guest_count + ' os.' : ''}
+                            ${timeStr ? ' · <i class="bi bi-clock"></i> ' + timeStr : ''}
+                        </div>
+                        ${b.phone ? '<div class="small mt-1"><i class="bi bi-telephone"></i> ' + b.phone + '</div>' : ''}
+                        ${b.email ? '<div class="small"><i class="bi bi-envelope"></i> ' + b.email + '</div>' : ''}
+                        <a href="/owner/booking/${b.id}/" class="btn btn-outline-primary btn-sm mt-2 w-100">
+                            <i class="bi bi-eye"></i> Szczegóły
+                        </a>
                     </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-</div>
+                </div>`;
+            });
+        } else {
+            html += '<div class="text-center text-muted py-4"><i class="bi bi-calendar-x fs-1 d-block mb-2"></i>Brak rezerwacji w tym dniu</div>';
+        }
 
-<!-- Podsumowanie miesiąca -->
-<div class="card mt-4 shadow-sm">
-    <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-bar-chart"></i> Podsumowanie: {{ month_name }} {{ year }}</h5>
-        <div class="row text-center mt-3">
-            <div class="col-md-3">
-                <div class="fs-2 fw-bold text-primary">{{ month_stats.total }}</div>
-                <div class="text-muted">Rezerwacji</div>
-            </div>
-            <div class="col-md-3">
-                <div class="fs-2 fw-bold text-success">{{ month_stats.confirmed }}</div>
-                <div class="text-muted">Potwierdzonych</div>
-            </div>
-            <div class="col-md-3">
-                <div class="fs-2 fw-bold text-warning">{{ month_stats.pending }}</div>
-                <div class="text-muted">Oczekujących</div>
-            </div>
-            <div class="col-md-3">
-                <div class="fs-2 fw-bold text-info">{{ month_stats.total_guests }}</div>
-                <div class="text-muted">Łącznie gości</div>
-            </div>
-        </div>
-    </div>
-</div>
+        return html;
+    }
+
+    // ── Block / Unblock ─────────────────────────────────────────────────
+    const blockModal = new bootstrap.Modal(document.getElementById("blockModal"));
+
+    window._calBlock = function(isoDate) {
+        document.getElementById("block-date-label").textContent = isoDate;
+        document.getElementById("block-date-value").value = isoDate;
+        document.getElementById("block-reason").value = "";
+        bsOffcanvas.hide();
+        blockModal.show();
+    };
+
+    document.getElementById("btn-confirm-block").addEventListener("click", () => {
+        const d = document.getElementById("block-date-value").value;
+        const reason = document.getElementById("block-reason").value;
+        fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+            },
+            body: JSON.stringify({action: "block", date: d, reason: reason}),
+        })
+        .then(r => r.json())
+        .then(() => {
+            blockModal.hide();
+            loadMonth(currentYear, currentMonth);
+        });
+    });
+
+    window._calUnblock = function(isoDate) {
+        if (!confirm("Odblokować ten dzień?")) return;
+        fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+            },
+            body: JSON.stringify({action: "unblock", date: isoDate}),
+        })
+        .then(r => r.json())
+        .then(() => {
+            bsOffcanvas.hide();
+            loadMonth(currentYear, currentMonth);
+        });
+    };
+
+    // ── Initial bind ────────────────────────────────────────────────────
+    bindCalendarEvents();
+});
+</script>
 {% endblock %}

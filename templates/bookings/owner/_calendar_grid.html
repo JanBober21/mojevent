@@ -1,0 +1,107 @@
+{# ── Calendar grid partial — AJAXed into #calendar-container ─────── #}
+
+<!-- Month navigation bar -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center py-2 cal-nav">
+        {% if cal.prev %}
+        <button class="cal-nav-btn" data-nav="prev" data-year="{{ cal.prev.year }}" data-month="{{ cal.prev.month }}" title="Poprzedni miesiąc">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        {% else %}
+        <span class="cal-nav-btn disabled"><i class="bi bi-chevron-left"></i></span>
+        {% endif %}
+
+        <h4 class="mb-0 fw-bold" style="color:#7c3aed;">
+            {{ cal.month_name }} {{ cal.year }}
+        </h4>
+
+        {% if cal.next %}
+        <button class="cal-nav-btn" data-nav="next" data-year="{{ cal.next.year }}" data-month="{{ cal.next.month }}" title="Następny miesiąc">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+        {% else %}
+        <span class="cal-nav-btn disabled"><i class="bi bi-chevron-right"></i></span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+    <span class="small text-muted me-1">Legenda:</span>
+    <span class="small"><span class="legend-dot" style="background:#16a34a;"></span>Potwierdzona</span>
+    <span class="small"><span class="legend-dot" style="background:#eab308;"></span>Oczekująca</span>
+    <span class="small"><span class="legend-dot" style="background:#6b7280;"></span>Zakończona</span>
+    <span class="small"><span class="legend-dot" style="background:#fef2f2;border:1px solid #fca5a5;"></span>Zablokowany</span>
+    <span class="small"><span class="legend-dot" style="background:#f3f4f6;border:1px solid #d1d5db;"></span>Zamknięty</span>
+</div>
+
+<!-- Calendar grid -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-0" style="overflow-x:auto;">
+        <div class="cal-grid" style="min-width:630px;">
+            <!-- Day-of-week headers -->
+            <div class="cal-header-cell">Pn</div>
+            <div class="cal-header-cell">Wt</div>
+            <div class="cal-header-cell">Śr</div>
+            <div class="cal-header-cell">Czw</div>
+            <div class="cal-header-cell">Pt</div>
+            <div class="cal-header-cell">Sb</div>
+            <div class="cal-header-cell">Nd</div>
+
+            {% for week in cal.weeks %}
+                {% for cell in week %}
+                    {% if cell %}
+                    <div class="cal-cell{% if cell.today %} cal-today{% endif %}{% if cell.past %} cal-past{% endif %}{% if cell.blocked %} cal-blocked{% endif %}{% if cell.closed %} cal-closed{% endif %}"
+                         data-date="{{ cell.date|date:'Y-m-d' }}">
+                        <div class="cal-day-num">{{ cell.day }}</div>
+                        {% if cell.bookings %}
+                            {% for b in cell.bookings %}
+                            <a href="{% url 'owner_booking_detail' b.id %}"
+                               class="cal-booking st-{{ b.status }}"
+                               title="{{ b.type_display }} — {{ b.guest_count|default:'?' }} os. — {{ b.client }}">
+                                {% if b.start_time %}{{ b.start_time }} {% endif %}{{ b.type_display }}
+                            </a>
+                            {% endfor %}
+                        {% endif %}
+                        {% if cell.max_events > 1 %}
+                        <span class="cal-slots{% if cell.booked %} full{% endif %}">
+                            {{ cell.booking_count }}/{{ cell.max_events }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="cal-cell cal-empty"></div>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Month stats -->
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-val">{{ cal.stats.total }}</div>
+            <div class="stat-label">Rezerwacji</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-val" style="color:#16a34a;">{{ cal.stats.confirmed }}</div>
+            <div class="stat-label">Potwierdzonych</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-val" style="color:#eab308;">{{ cal.stats.pending }}</div>
+            <div class="stat-label">Oczekujących</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-val" style="color:#06b6d4;">{{ cal.stats.guests }}</div>
+            <div class="stat-label">Łącznie gości</div>
+        </div>
+    </div>
+</div>

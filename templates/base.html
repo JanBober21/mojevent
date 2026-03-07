@@ -81,6 +81,11 @@
                                     <i class="bi bi-menu-button-wide"></i> Menu
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'owner_dish_base' %}">
+                                    <i class="bi bi-egg-fried"></i> Baza potraw
+                                </a>
+                            </li>
                             {% if active_restaurant.firm_type == 'attraction' %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'owner_attractions' %}">
@@ -187,6 +192,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'owner_menu' %}">
                             <i class="bi bi-menu-button-wide"></i> Menu
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'owner_dish_base' %}">
+                            <i class="bi bi-egg-fried"></i> Baza potraw
                         </a>
                     </li>
                     {% if active_restaurant.firm_type == 'attraction' %}

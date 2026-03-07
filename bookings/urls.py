@@ -40,6 +40,7 @@ urlpatterns = [
     path("owner/restauracja/edytuj/", views.owner_restaurant_edit, name="owner_restaurant_edit"),
     path("owner/menu/", views.owner_menu, name="owner_menu"),
     path("owner/menu/<int:menu_id>/", views.owner_menu_detail, name="owner_menu_detail"),
+    path("owner/baza-potraw/", views.owner_dish_base, name="owner_dish_base"),
     path("owner/atrakcje/", views.owner_attractions, name="owner_attractions"),
     path("owner/firmy/", views.owner_firms, name="owner_firms"),
     path("owner/firmy/przelacz/<int:restaurant_id>/", views.owner_switch_firm, name="owner_switch_firm"),
@@ -61,6 +62,7 @@ urlpatterns = [
 
     # API
     path("api/menu-suggestions/", views.menu_suggestions_api, name="menu_suggestions_api"),
+    path("api/dish-base/", views.dish_base_api, name="dish_base_api"),
     path("api/social-import/", views.social_import_api, name="social_import_api"),
 
     # Konto

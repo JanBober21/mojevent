@@ -705,6 +705,51 @@ class BookingCourse(models.Model):
         return f"{self.name} ({self.get_serving_style_display()})"
 
 
+class Dish(models.Model):
+    """Baza potraw restauracji — Moja Baza Potraw.
+
+    Per-restaurant dish library used as quick-add source when building menus.
+    Imported from Excel, Word, text paste, external catalog, or added manually.
+    """
+
+    class Source(models.TextChoices):
+        MANUAL = "manual", "Ręcznie"
+        EXCEL = "excel", "Import z Excel"
+        WORD = "word", "Import z Word"
+        TEXT = "text", "Import z tekstu"
+        EXTERNAL = "external", "Zewnętrzna baza"
+        MENU = "menu", "Z istniejącego menu"
+
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name="dishes",
+        verbose_name="Firma",
+    )
+    category = models.CharField(
+        "Kategoria", max_length=20, choices=MenuItem.Category.choices,
+    )
+    name = models.CharField("Nazwa", max_length=200)
+    description = models.TextField("Opis", blank=True)
+    price = models.DecimalField(
+        "Cena (zł)", max_digits=8, decimal_places=2, default=0,
+    )
+    source = models.CharField(
+        "Źródło", max_length=20,
+        choices=Source.choices, default=Source.MANUAL,
+    )
+    created_at = models.DateTimeField("Dodano", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Potrawa"
+        verbose_name_plural = "Baza potraw"
+        ordering = ["category", "name"]
+        unique_together = ["restaurant", "category", "name"]
+
+    def __str__(self):
+        return f"{self.get_category_display()}: {self.name} ({self.price} zł)"
+
+
 class AttractionItem(models.Model):
     """Pozycja oferty firmy typu Atrakcje."""
 

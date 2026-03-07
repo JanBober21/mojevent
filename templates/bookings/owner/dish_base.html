@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+
+{% block title %}Moja Baza Potraw — {{ restaurant.name }} — EventBook{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="bi bi-egg-fried"></i> Moja Baza Potraw</h1>
+        <p class="text-muted fs-5">{{ restaurant.name }} — {{ total_dishes }} potraw</p>
+    </div>
+    <div>
+        <a href="{% url 'owner_menu' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-menu-button-wide"></i> Menu
+        </a>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Panel
+        </a>
+    </div>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ════ Akcje — Import + Dodaj ════ -->
+<div class="row g-3 mb-4">
+
+    <!-- Dodaj ręcznie -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header text-white" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Dodaj potrawę</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small">Kategoria</label>
+                            <select name="category" class="form-select form-select-sm">
+                                {% for value, label in categories %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small">Nazwa *</label>
+                            <input type="text" name="name" class="form-control form-control-sm"
+                                   placeholder="np. Rosół z makaronem" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small">Opis</label>
+                            <input type="text" name="description" class="form-control form-control-sm"
+                                   placeholder="Opcjonalny opis potrawy">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Cena (zł)</label>
+                            <input type="number" name="price" class="form-control form-control-sm"
+                                   step="0.01" min="0" value="0">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-plus-lg"></i> Dodaj do bazy
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import panel -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header text-white" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);">
+                <h5 class="mb-0"><i class="bi bi-cloud-arrow-up"></i> Importuj potrawy</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-pills nav-fill mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active small" data-bs-toggle="pill" data-bs-target="#tab-text" type="button">
+                            <i class="bi bi-textarea-t"></i> Tekst
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link small" data-bs-toggle="pill" data-bs-target="#tab-excel" type="button">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link small" data-bs-toggle="pill" data-bs-target="#tab-word" type="button">
+                            <i class="bi bi-file-earmark-word"></i> Word
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link small" data-bs-toggle="pill" data-bs-target="#tab-menu" type="button">
+                            <i class="bi bi-journal-text"></i> Menu
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <!-- Import z tekstu -->
+                    <div class="tab-pane fade show active" id="tab-text" role="tabpanel">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="import_text">
+                            <div class="mb-2">
+                                <select name="import_category" class="form-select form-select-sm">
+                                    {% for value, label in categories %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <textarea name="raw_text" class="form-control form-control-sm" rows="4"
+                                          placeholder="Wklej listę potraw, jedna na linię:&#10;Rosół z makaronem - 18.00&#10;Kotlet schabowy - z ziemniakami - 35&#10;Sernik domowy 22.50"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-cloud-arrow-up"></i> Importuj z tekstu
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Import z Excel -->
+                    <div class="tab-pane fade" id="tab-excel" role="tabpanel">
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="import_excel">
+                            <div class="mb-2">
+                                <select name="import_category" class="form-select form-select-sm">
+                                    {% for value, label in categories %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <input type="file" name="excel_file" class="form-control form-control-sm"
+                                       accept=".xlsx,.xls">
+                            </div>
+                            <p class="text-muted small mb-2">Plik .xlsx z kolumnami: Nazwa, Opis (opcj.), Cena</p>
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-file-earmark-excel"></i> Importuj z Excel
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Import z Word -->
+                    <div class="tab-pane fade" id="tab-word" role="tabpanel">
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="import_word">
+                            <div class="mb-2">
+                                <select name="import_category" class="form-select form-select-sm">
+                                    {% for value, label in categories %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <input type="file" name="word_file" class="form-control form-control-sm"
+                                       accept=".docx">
+                            </div>
+                            <p class="text-muted small mb-2">Plik .docx — potrawy z paragrafów i tabel</p>
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-file-earmark-word"></i> Importuj z Word
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Import z istniejącego menu -->
+                    <div class="tab-pane fade" id="tab-menu" role="tabpanel">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="import_menu">
+                            <div class="mb-2">
+                                <select name="menu_id" class="form-select form-select-sm">
+                                    {% for m in all_menus %}
+                                    <option value="{{ m.id }}">{{ m.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <p class="text-muted small mb-2">Skopiuj potrawy z wybranego menu do bazy</p>
+                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-journal-arrow-down"></i> Importuj z menu
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════ Zewnętrzna baza potraw ════ -->
+<div class="card shadow-sm mb-4 border-0" style="border-left: 4px solid #7c3aed !important;">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: #fff;">
+        <h5 class="mb-0"><i class="bi bi-globe2"></i> Zewnętrzna baza potraw</h5>
+        <button class="btn btn-sm btn-light" data-bs-toggle="collapse" data-bs-target="#external-db">
+            <i class="bi bi-search"></i> Przeglądaj
+        </button>
+    </div>
+    <div class="collapse" id="external-db">
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                Wyszukaj potrawy w ogólnej bazie EventBook i dodaj je do swojej bazy potraw jednym kliknięciem.
+            </p>
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <select id="ext-category" class="form-select form-select-sm">
+                        <option value="">Wszystkie kategorie</option>
+                        {% for value, label in categories %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <input type="text" id="ext-search" class="form-control form-control-sm"
+                           placeholder="Szukaj w zewnętrznej bazie...">
+                </div>
+            </div>
+            <div id="ext-results" class="list-group" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ════ Filtr + wyszukiwarka ════ -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-0">Kategoria</label>
+                <select name="category" class="form-select form-select-sm">
+                    <option value="">Wszystkie</option>
+                    {% for value, label in categories %}
+                    <option value="{{ value }}" {% if filter_cat == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-0">Szukaj</label>
+                <input type="text" name="q" class="form-control form-control-sm"
+                       value="{{ search_q }}" placeholder="Nazwa lub opis potrawy...">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-search"></i> Filtruj
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ════ Akcje zbiorcze ════ -->
+<form method="post" id="bulk-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="bulk_delete" id="bulk-action">
+    <input type="hidden" name="target_menu_id" value="" id="bulk-target-menu">
+
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-select-all">
+            <i class="bi bi-check2-all"></i> Zaznacz wszystkie
+        </button>
+        <button type="submit" class="btn btn-sm btn-outline-danger" id="btn-bulk-delete"
+                onclick="document.getElementById('bulk-action').value='bulk_delete'; return confirm('Usunąć zaznaczone potrawy?');">
+            <i class="bi bi-trash"></i> Usuń zaznaczone
+        </button>
+        {% if all_menus %}
+        <div class="input-group input-group-sm" style="max-width: 350px;">
+            <select class="form-select form-select-sm" id="add-to-menu-select">
+                {% for m in all_menus %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-success" id="btn-add-to-menu"
+                    onclick="document.getElementById('bulk-action').value='add_to_menu'; document.getElementById('bulk-target-menu').value=document.getElementById('add-to-menu-select').value;">
+                <i class="bi bi-plus-circle"></i> Dodaj do menu
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ════ Lista potraw wg kategorii ════ -->
+    {% for group in dish_by_category %}
+    {% if group.items %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">{{ group.label }}</h5>
+            <span class="badge bg-secondary">{{ group.count }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 35px;">
+                            <input type="checkbox" class="form-check-input cat-check-all" data-cat="{{ group.key }}">
+                        </th>
+                        <th>Nazwa</th>
+                        <th>Opis</th>
+                        <th>Cena</th>
+                        <th class="text-center">Źródło</th>
+                        <th class="text-end">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dish in group.items %}
+                    <tr id="dish-row-{{ dish.id }}">
+                        <td>
+                            <input type="checkbox" class="form-check-input dish-check" name="selected_dishes"
+                                   value="{{ dish.id }}" data-cat="{{ group.key }}">
+                        </td>
+                        <td class="fw-semibold">{{ dish.name }}</td>
+                        <td class="text-muted small">{{ dish.description|default:"-" }}</td>
+                        <td>{{ dish.price }} zł</td>
+                        <td class="text-center">
+                            <i class="bi {{ dish.source|default:'manual' }}" title="{{ dish.get_source_display }}"></i>
+                            <span class="badge bg-light text-dark small">{{ dish.get_source_display }}</span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#edit-dish-{{ dish.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- Formularz edycji (ukryty) -->
+                    <tr class="collapse" id="edit-dish-{{ dish.id }}">
+                        <td colspan="6" class="bg-light">
+                            <div class="row g-2 align-items-end p-2">
+                                <!-- Edycja -->
+                                <form method="post" class="col-md-10">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="edit">
+                                    <input type="hidden" name="dish_id" value="{{ dish.id }}">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-2">
+                                            <label class="form-label small">Kategoria</label>
+                                            <select name="category" class="form-select form-select-sm">
+                                                {% for value, label in categories %}
+                                                <option value="{{ value }}" {% if value == dish.category %}selected{% endif %}>{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Nazwa</label>
+                                            <input type="text" name="name" class="form-control form-control-sm"
+                                                   value="{{ dish.name }}" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Opis</label>
+                                            <input type="text" name="description" class="form-control form-control-sm"
+                                                   value="{{ dish.description }}">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small">Cena</label>
+                                            <input type="number" name="price" class="form-control form-control-sm"
+                                                   step="0.01" min="0" value="{{ dish.price }}" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                <i class="bi bi-check-lg"></i> Zapisz
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                                <!-- Usuń -->
+                                <form method="post" class="col-md-2"
+                                      onsubmit="return confirm('Usunąć „{{ dish.name }}" z bazy?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="dish_id" value="{{ dish.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                        <i class="bi bi-trash"></i> Usuń
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% if total_dishes == 0 %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-egg-fried display-1 opacity-25"></i>
+        <p class="fs-5 mt-3">Twoja baza potraw jest pusta</p>
+        <p>Dodaj potrawy ręcznie, zaimportuj z pliku lub przeglądaj zewnętrzną bazę powyżej.</p>
+    </div>
+    {% endif %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    // ── Select all checkboxes ──
+    var btnAll = document.getElementById('btn-select-all');
+    if (btnAll) {
+        btnAll.addEventListener('click', function() {
+            var checks = document.querySelectorAll('.dish-check');
+            var allChecked = Array.from(checks).every(function(c) { return c.checked; });
+            checks.forEach(function(c) { c.checked = !allChecked; });
+        });
+    }
+
+    // Category select-all
+    document.querySelectorAll('.cat-check-all').forEach(function(masterCb) {
+        masterCb.addEventListener('change', function() {
+            var cat = this.dataset.cat;
+            document.querySelectorAll('.dish-check[data-cat="' + cat + '"]')
+                .forEach(function(cb) { cb.checked = masterCb.checked; });
+        });
+    });
+
+    // ── Zewnętrzna baza — AJAX search ──
+    var extSearch = document.getElementById('ext-search');
+    var extCat = document.getElementById('ext-category');
+    var extResults = document.getElementById('ext-results');
+    var debounce = null;
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function fetchExternal() {
+        var q = extSearch.value.trim();
+        if (q.length < 2) { extResults.innerHTML = '<div class="text-muted small p-2">Wpisz min. 2 znaki...</div>'; return; }
+        var cat = extCat.value;
+        var url = '/api/dish-base/?q=' + encodeURIComponent(q) + '&category=' + encodeURIComponent(cat) + '&source=external';
+        fetch(url, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.length) {
+                    extResults.innerHTML = '<div class="text-muted small p-2">Brak wyników</div>';
+                    return;
+                }
+                extResults.innerHTML = '';
+                data.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.className = 'list-group-item d-flex justify-content-between align-items-center py-2';
+                    div.innerHTML =
+                        '<div>' +
+                            '<strong>' + escHtml(item.name) + '</strong>' +
+                            ' <span class="badge bg-secondary small">' + escHtml(item.category) + '</span>' +
+                            (item.price ? ' <span class="text-muted small">' + item.price.toFixed(2) + ' zł</span>' : '') +
+                        '</div>' +
+                        '<form method="post" class="d-inline">' +
+                            '<input type="hidden" name="csrfmiddlewaretoken" value="' + getCsrf() + '">' +
+                            '<input type="hidden" name="action" value="add_external">' +
+                            '<input type="hidden" name="name" value="' + escHtml(item.name) + '">' +
+                            '<input type="hidden" name="category" value="' + escHtml(item.category) + '">' +
+                            '<input type="hidden" name="price" value="' + item.price + '">' +
+                            '<button type="submit" class="btn btn-sm btn-outline-success">' +
+                                '<i class="bi bi-plus-lg"></i>' +
+                            '</button>' +
+                        '</form>';
+                    extResults.appendChild(div);
+                });
+            });
+    }
+
+    function getCsrf() {
+        var c = document.querySelector('[name=csrfmiddlewaretoken]');
+        return c ? c.value : '';
+    }
+
+    if (extSearch) {
+        extSearch.addEventListener('input', function() {
+            clearTimeout(debounce);
+            debounce = setTimeout(fetchExternal, 300);
+        });
+        extCat.addEventListener('change', function() {
+            if (extSearch.value.trim().length >= 2) fetchExternal();
+        });
+    }
+})();
+</script>
+{% endblock %}

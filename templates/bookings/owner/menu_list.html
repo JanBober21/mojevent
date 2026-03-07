@@ -8,9 +8,14 @@
         <h1><i class="bi bi-menu-button-wide"></i> Menu firmy</h1>
         <p class="text-muted fs-5">{{ restaurant.name }}</p>
     </div>
-    <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i> Panel
-    </a>
+    <div>
+        <a href="{% url 'owner_dish_base' %}" class="btn btn-outline-primary">
+            <i class="bi bi-egg-fried"></i> Baza potraw
+        </a>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Panel
+        </a>
+    </div>
 </div>
 
 {% if messages %}

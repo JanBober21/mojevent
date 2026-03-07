@@ -14,6 +14,9 @@
         <p class="text-muted fs-5">{{ restaurant.name }}</p>
     </div>
     <div class="d-flex gap-2">
+        <a href="{% url 'owner_dish_base' %}" class="btn btn-outline-primary">
+            <i class="bi bi-egg-fried"></i> Baza potraw
+        </a>
         <a href="{% url 'owner_menu' %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Wszystkie menu
         </a>
@@ -277,7 +280,10 @@
                     var a = document.createElement('a');
                     a.href = '#';
                     a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2';
-                    a.innerHTML = '<span>' + escHtml(item.name) + '</span>' +
+                    var srcBadge = item.source === 'dish_base'
+                        ? '<span class="badge bg-success rounded-pill ms-1" title="Z Twojej bazy">BP</span>'
+                        : '';
+                    a.innerHTML = '<span>' + escHtml(item.name) + srcBadge + '</span>' +
                         '<span class="badge bg-primary rounded-pill">' + item.last_price.toFixed(2) + ' zl</span>';
                     a.addEventListener('click', function(e) {
                         e.preventDefault();

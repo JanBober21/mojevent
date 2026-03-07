@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.utils.html import format_html
 from django.http import HttpResponse
 import csv
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, UserProfile
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, UserProfile, Dish
 
 
 # ── Rozszerzony panel użytkowników z kolumną Rola ─────────────────────────────
@@ -155,3 +155,11 @@ class BookingMessageAdmin(admin.ModelAdmin):
     @admin.display(description="Treść")
     def short_content(self, obj):
         return obj.content[:80] + "…" if len(obj.content) > 80 else obj.content
+
+
+@admin.register(Dish)
+class DishAdmin(admin.ModelAdmin):
+    list_display = ["name", "restaurant", "category", "price", "source", "created_at"]
+    list_filter = ["category", "source", "restaurant"]
+    search_fields = ["name", "description"]
+    readonly_fields = ["created_at"]

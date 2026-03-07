@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, date
 import json
 import math
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, BookingTodo, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate, BookingCourse, MenuTypeChoice
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, BookingTodo, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate, BookingCourse, MenuTypeChoice, Dish
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 from .style_scraper import scrape_styles
 from .social_scraper import import_from_urls, detect_platform, PLATFORM_LABELS, PLATFORM_ICONS
@@ -1793,27 +1793,413 @@ def owner_switch_firm(request, restaurant_id):
     return redirect(request.GET.get("next", "owner_dashboard"))
 
 
+# ── Moja Baza Potraw ──────────────────────────────────────────────────────────
+
+DISH_SOURCE_LABELS = dict(Dish.Source.choices)
+
+DISH_SOURCE_ICONS = {
+    "manual": "bi-pencil",
+    "excel": "bi-file-earmark-excel",
+    "word": "bi-file-earmark-word",
+    "text": "bi-textarea-t",
+    "external": "bi-globe2",
+    "menu": "bi-journal-text",
+}
+
+
+def _parse_dishes_from_text(raw_text):
+    """Parse raw text lines into dish dicts.
+
+    Supported formats per line:
+        Nazwa potrawy - opis - 45.00
+        Nazwa potrawy  45.00
+        Nazwa potrawy - 45
+        Nazwa potrawy
+    Returns list of dicts: {name, description, price}
+    """
+    import re
+    dishes = []
+    for line in raw_text.strip().splitlines():
+        line = line.strip()
+        if not line or len(line) < 2:
+            continue
+        # Try to extract price at the end
+        price_match = re.search(r'[\s\-–—]+(\d+(?:[.,]\d{1,2})?)\s*(zł|PLN|pln|zl)?\s*$', line)
+        price = 0
+        if price_match:
+            price = float(price_match.group(1).replace(',', '.'))
+            line = line[:price_match.start()].strip()
+        # Try to split name - description by " - " or " – "
+        parts = re.split(r'\s+[-–—]\s+', line, maxsplit=1)
+        name = parts[0].strip().rstrip('-–— ')
+        description = parts[1].strip() if len(parts) > 1 else ''
+        if name:
+            dishes.append({'name': name, 'description': description, 'price': price})
+    return dishes
+
+
+def _parse_dishes_from_excel(file_obj):
+    """Parse uploaded Excel (.xlsx) file into dish dicts."""
+    import openpyxl
+    wb = openpyxl.load_workbook(file_obj, read_only=True, data_only=True)
+    dishes = []
+    for ws in wb.worksheets:
+        for row in ws.iter_rows(min_row=1, values_only=True):
+            cells = [c for c in row if c is not None]
+            if not cells:
+                continue
+            name = str(cells[0]).strip()
+            if not name or name.lower() in ('nazwa', 'name', 'potrawa', 'danie', 'lp', 'lp.'):
+                continue
+            description = ''
+            price = 0
+            for c in cells[1:]:
+                val = str(c).strip()
+                try:
+                    price = float(val.replace(',', '.').replace(' ', ''))
+                except (ValueError, AttributeError):
+                    if not description:
+                        description = val
+            dishes.append({'name': name, 'description': description, 'price': price})
+    wb.close()
+    return dishes
+
+
+def _parse_dishes_from_docx(file_obj):
+    """Parse uploaded Word (.docx) file into dish dicts."""
+    import docx
+    doc = docx.Document(file_obj)
+    raw_lines = []
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if text:
+            raw_lines.append(text)
+    # Also gather table rows
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                raw_lines.append(' - '.join(cells))
+    return _parse_dishes_from_text('\n'.join(raw_lines))
+
+
+@login_required
+def owner_dish_base(request):
+    """Moja Baza Potraw — per-restaurant dish library."""
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
+        return redirect("home")
+    if not restaurant:
+        return redirect("owner_restaurant_create")
+
+    categories = MenuItem.Category.choices
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        # ── Dodaj ręcznie ──
+        if action == "add":
+            cat = request.POST.get("category", "main")
+            name = request.POST.get("name", "").strip()
+            desc = request.POST.get("description", "").strip()
+            price = request.POST.get("price", "0")
+            if name:
+                try:
+                    price = float(str(price).replace(",", "."))
+                except ValueError:
+                    price = 0
+                _, created = Dish.objects.get_or_create(
+                    restaurant=restaurant, category=cat, name=name,
+                    defaults={"description": desc, "price": price, "source": Dish.Source.MANUAL},
+                )
+                if created:
+                    messages.success(request, f'Dodano „{name}" do bazy potraw.')
+                else:
+                    messages.info(request, f'„{name}" już istnieje w bazie.')
+
+        # ── Edytuj ──
+        elif action == "edit":
+            dish_id = request.POST.get("dish_id")
+            dish = Dish.objects.filter(id=dish_id, restaurant=restaurant).first()
+            if dish:
+                dish.category = request.POST.get("category", dish.category)
+                dish.name = request.POST.get("name", dish.name).strip()
+                dish.description = request.POST.get("description", "").strip()
+                try:
+                    dish.price = float(str(request.POST.get("price", dish.price)).replace(",", "."))
+                except ValueError:
+                    pass
+                dish.save()
+                messages.success(request, f'Zaktualizowano „{dish.name}".')
+
+        # ── Usuń ──
+        elif action == "delete":
+            dish_id = request.POST.get("dish_id")
+            dish = Dish.objects.filter(id=dish_id, restaurant=restaurant).first()
+            if dish:
+                name = dish.name
+                dish.delete()
+                messages.success(request, f'Usunięto „{name}" z bazy potraw.')
+
+        # ── Usuń zaznaczone (bulk) ──
+        elif action == "bulk_delete":
+            ids = request.POST.getlist("selected_dishes")
+            count = Dish.objects.filter(id__in=ids, restaurant=restaurant).delete()[0]
+            messages.success(request, f'Usunięto {count} pozycji z bazy potraw.')
+
+        # ── Import z tekstu ──
+        elif action == "import_text":
+            raw = request.POST.get("raw_text", "")
+            cat = request.POST.get("import_category", "main")
+            parsed = _parse_dishes_from_text(raw)
+            added = 0
+            for d in parsed:
+                _, created = Dish.objects.get_or_create(
+                    restaurant=restaurant, category=cat, name=d["name"],
+                    defaults={"description": d["description"], "price": d["price"],
+                              "source": Dish.Source.TEXT},
+                )
+                if created:
+                    added += 1
+            messages.success(request, f'Zaimportowano {added} nowych potraw z tekstu ({len(parsed)} rozpoznanych).')
+
+        # ── Import z Excel ──
+        elif action == "import_excel":
+            f = request.FILES.get("excel_file")
+            cat = request.POST.get("import_category", "main")
+            if f:
+                try:
+                    parsed = _parse_dishes_from_excel(f)
+                    added = 0
+                    for d in parsed:
+                        _, created = Dish.objects.get_or_create(
+                            restaurant=restaurant, category=cat, name=d["name"],
+                            defaults={"description": d["description"], "price": d["price"],
+                                      "source": Dish.Source.EXCEL},
+                        )
+                        if created:
+                            added += 1
+                    messages.success(request, f'Zaimportowano {added} nowych potraw z Excel ({len(parsed)} rozpoznanych).')
+                except Exception as e:
+                    messages.error(request, f'Błąd importu Excel: {e}')
+            else:
+                messages.error(request, 'Nie wybrano pliku Excel.')
+
+        # ── Import z Word ──
+        elif action == "import_word":
+            f = request.FILES.get("word_file")
+            cat = request.POST.get("import_category", "main")
+            if f:
+                try:
+                    parsed = _parse_dishes_from_docx(f)
+                    added = 0
+                    for d in parsed:
+                        _, created = Dish.objects.get_or_create(
+                            restaurant=restaurant, category=cat, name=d["name"],
+                            defaults={"description": d["description"], "price": d["price"],
+                                      "source": Dish.Source.WORD},
+                        )
+                        if created:
+                            added += 1
+                    messages.success(request, f'Zaimportowano {added} nowych potraw z Word ({len(parsed)} rozpoznanych).')
+                except Exception as e:
+                    messages.error(request, f'Błąd importu Word: {e}')
+            else:
+                messages.error(request, 'Nie wybrano pliku Word.')
+
+        # ── Import z istniejącego menu ──
+        elif action == "import_menu":
+            menu_id = request.POST.get("menu_id")
+            menu_obj = Menu.objects.filter(id=menu_id, restaurant=restaurant).first()
+            if menu_obj:
+                items = MenuItem.objects.filter(menu=menu_obj)
+                added = 0
+                for item in items:
+                    _, created = Dish.objects.get_or_create(
+                        restaurant=restaurant, category=item.category, name=item.name,
+                        defaults={"description": item.description, "price": item.price,
+                                  "source": Dish.Source.MENU},
+                    )
+                    if created:
+                        added += 1
+                messages.success(request, f'Zaimportowano {added} nowych potraw z menu „{menu_obj.name}".')
+
+        # ── Dodaj z zewnętrznej bazy ──
+        elif action == "add_external":
+            ext_name = request.POST.get("name", "").strip()
+            ext_cat = request.POST.get("category", "main")
+            ext_price = request.POST.get("price", "0")
+            if ext_name:
+                try:
+                    ext_price = float(str(ext_price).replace(",", "."))
+                except ValueError:
+                    ext_price = 0
+                _, created = Dish.objects.get_or_create(
+                    restaurant=restaurant, category=ext_cat, name=ext_name,
+                    defaults={"description": "", "price": ext_price,
+                              "source": Dish.Source.EXTERNAL},
+                )
+                if created:
+                    messages.success(request, f'Dodano „{ext_name}" z zewnętrznej bazy.')
+                else:
+                    messages.info(request, f'„{ext_name}" już istnieje w Twojej bazie.')
+
+        # ── Dodaj do menu ──
+        elif action == "add_to_menu":
+            dish_ids = request.POST.getlist("selected_dishes")
+            menu_id = request.POST.get("target_menu_id")
+            menu_obj = Menu.objects.filter(id=menu_id, restaurant=restaurant).first()
+            if menu_obj and dish_ids:
+                added = 0
+                for dish in Dish.objects.filter(id__in=dish_ids, restaurant=restaurant):
+                    if not MenuItem.objects.filter(menu=menu_obj, name=dish.name, category=dish.category).exists():
+                        MenuItem.objects.create(
+                            restaurant=restaurant, menu=menu_obj,
+                            category=dish.category, name=dish.name,
+                            description=dish.description, price=dish.price,
+                        )
+                        added += 1
+                messages.success(request, f'Dodano {added} pozycji do menu „{menu_obj.name}".')
+
+        return redirect("owner_dish_base")
+
+    # ── GET — lista ──
+    filter_cat = request.GET.get("category", "")
+    search_q = request.GET.get("q", "").strip()
+
+    dishes_qs = Dish.objects.filter(restaurant=restaurant)
+    if filter_cat:
+        dishes_qs = dishes_qs.filter(category=filter_cat)
+    if search_q:
+        dishes_qs = dishes_qs.filter(Q(name__icontains=search_q) | Q(description__icontains=search_q))
+
+    # Group by category
+    dish_by_category = []
+    for cat_val, cat_label in categories:
+        items = [d for d in dishes_qs if d.category == cat_val]
+        if items or not filter_cat:
+            dish_by_category.append({
+                "key": cat_val,
+                "label": cat_label,
+                "items": items,
+                "count": len(items),
+            })
+
+    all_menus = Menu.objects.filter(restaurant=restaurant)
+
+    return render(request, "bookings/owner/dish_base.html", {
+        "restaurant": restaurant,
+        "categories": categories,
+        "dish_by_category": dish_by_category,
+        "total_dishes": dishes_qs.count(),
+        "filter_cat": filter_cat,
+        "search_q": search_q,
+        "all_menus": all_menus,
+        "source_labels": DISH_SOURCE_LABELS,
+        "source_icons": DISH_SOURCE_ICONS,
+    })
+
+
+@login_required
+def dish_base_api(request):
+    """AJAX API — search dishes in own library + external catalog."""
+    memberships, restaurant, membership = _get_owner_context(request)
+    if memberships is None:
+        return JsonResponse([], safe=False)
+
+    q = request.GET.get("q", "").strip()
+    category = request.GET.get("category", "").strip()
+    source = request.GET.get("source", "all")  # "own", "external", "all"
+
+    results = []
+
+    # Own dish base
+    if source in ("own", "all"):
+        qs = Dish.objects.filter(restaurant=restaurant)
+        if category:
+            qs = qs.filter(category=category)
+        if q:
+            qs = qs.filter(name__icontains=q)
+        for d in qs[:20]:
+            results.append({
+                "id": d.id,
+                "name": d.name,
+                "category": d.category,
+                "description": d.description,
+                "price": float(d.price),
+                "source": "own",
+            })
+
+    # External catalog (MenuItemTemplate)
+    if source in ("external", "all"):
+        qs = MenuItemTemplate.objects.all()
+        if category:
+            qs = qs.filter(category=category)
+        if q:
+            qs = qs.filter(name__icontains=q)
+        own_names = set(Dish.objects.filter(restaurant=restaurant).values_list("name", flat=True))
+        for t in qs[:20]:
+            if t.name not in own_names:
+                results.append({
+                    "id": None,
+                    "name": t.name,
+                    "category": t.category,
+                    "description": "",
+                    "price": float(t.last_price),
+                    "source": "external",
+                })
+
+    return JsonResponse(results[:30], safe=False)
+
+
 # ── API podpowiedzi menu ──────────────────────────────────────────────────────
 
 @login_required
 def menu_suggestions_api(request):
-    """Zwraca JSON z podpowiedziami pozycji menu (autocomplete)."""
+    """Zwraca JSON z podpowiedziami pozycji menu (autocomplete).
+
+    Priorytet: 1) Baza potraw właściciela, 2) Globalny katalog MenuItemTemplate.
+    """
     q = request.GET.get("q", "").strip()
     category = request.GET.get("category", "").strip()
 
-    qs = MenuItemTemplate.objects.all()
-    if category:
-        qs = qs.filter(category=category)
-    if q:
-        qs = qs.filter(name__icontains=q)
+    results = []
+    seen_names = set()
 
-    results = list(
-        qs.values("name", "category", "last_price")[:20]
-    )
-    # Konwertuj Decimal na float dla JSON
-    for r in results:
-        r["last_price"] = float(r["last_price"])
-    return JsonResponse(results, safe=False)
+    # 1) Baza potraw restauracji (jeśli owner jest zalogowany)
+    memberships, restaurant, membership = _get_owner_context(request)
+    if restaurant:
+        dish_qs = Dish.objects.filter(restaurant=restaurant)
+        if category:
+            dish_qs = dish_qs.filter(category=category)
+        if q:
+            dish_qs = dish_qs.filter(name__icontains=q)
+        for d in dish_qs[:15]:
+            results.append({
+                "name": d.name,
+                "category": d.category,
+                "last_price": float(d.price),
+                "source": "dish_base",
+            })
+            seen_names.add(d.name.lower())
+
+    # 2) Globalny katalog
+    tpl_qs = MenuItemTemplate.objects.all()
+    if category:
+        tpl_qs = tpl_qs.filter(category=category)
+    if q:
+        tpl_qs = tpl_qs.filter(name__icontains=q)
+    for t in tpl_qs[:20]:
+        if t.name.lower() not in seen_names:
+            results.append({
+                "name": t.name,
+                "category": t.category,
+                "last_price": float(t.last_price),
+                "source": "template",
+            })
+            seen_names.add(t.name.lower())
+
+    return JsonResponse(results[:25], safe=False)
 
 
 # ── Zapisane menu ──────────────────────────────────────────────────────────────

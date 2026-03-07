@@ -106,13 +106,13 @@
                                     <button type="button" class="btn btn-outline-secondary qty-minus" data-target="qty_{{ entry.item.id }}">
                                         <i class="bi bi-dash"></i>
                                     </button>
-                                    <input type="number" name="qty_{{ entry.item.id }}"
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" name="qty_{{ entry.item.id }}"
                                            id="qty_{{ entry.item.id }}"
                                            class="form-control form-control-sm text-center menu-qty"
                                            data-price="{{ entry.item.price }}"
                                            data-card="card-{{ entry.item.id }}"
-                                           value="{{ entry.qty }}" min="0" max="999"
-                                           style="max-width: 55px;">
+                                           value="{{ entry.qty }}"
+                                           style="max-width: 90px;">
                                     <button type="button" class="btn btn-outline-secondary qty-plus" data-target="qty_{{ entry.item.id }}">
                                         <i class="bi bi-plus"></i>
                                     </button>
@@ -244,7 +244,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     inputs.forEach(function(inp) {
-        inp.addEventListener('input', recalc);
+        inp.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            let v = parseInt(this.value) || 0;
+            if (v > 999) { this.value = '999'; }
+            recalc();
+        });
     });
 
     recalc();

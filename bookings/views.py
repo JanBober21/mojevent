@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, date
 import json
 import math
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, BookingTodo, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 from .style_scraper import scrape_styles
 from .social_scraper import import_from_urls, detect_platform, PLATFORM_LABELS, PLATFORM_ICONS
@@ -760,6 +760,27 @@ def owner_booking_detail(request, booking_id):
             note_id = request.POST.get("note_id")
             BookingNote.objects.filter(id=note_id, booking=booking).delete()
             messages.success(request, "Notatka została usunięta.")
+
+        elif action == "add_todo":
+            todo_text = request.POST.get("todo_text", "").strip()
+            if todo_text:
+                BookingTodo.objects.create(booking=booking, text=todo_text)
+                messages.success(request, "Zadanie dodane.")
+            else:
+                messages.error(request, "Wpisz treść zadania.")
+
+        elif action == "toggle_todo":
+            todo_id = request.POST.get("todo_id")
+            todo = BookingTodo.objects.filter(id=todo_id, booking=booking).first()
+            if todo:
+                todo.is_done = not todo.is_done
+                todo.save()
+
+        elif action == "delete_todo":
+            todo_id = request.POST.get("todo_id")
+            BookingTodo.objects.filter(id=todo_id, booking=booking).delete()
+            messages.success(request, "Zadanie usunięte.")
+
         elif action == "send_message":
             content = request.POST.get("message", "").strip()
             if content:
@@ -799,6 +820,8 @@ def owner_booking_detail(request, booking_id):
 
     notes = booking.crm_notes.all()
     chat_messages = booking.chat_messages.select_related("sender").all()
+    todos = booking.todos.all()
+    todos_done = todos.filter(is_done=True).count()
     today = timezone.now().date().isoformat()
     
     return render(request, "bookings/owner/booking_detail.html", {
@@ -806,6 +829,8 @@ def owner_booking_detail(request, booking_id):
         "booking": booking,
         "notes": notes,
         "chat_messages": chat_messages,
+        "todos": todos,
+        "todos_done": todos_done,
         "today": today,
     })
 

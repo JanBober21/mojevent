@@ -447,6 +447,29 @@ class BookingNote(models.Model):
         return f"{self.date} — {self.title}"
 
 
+class BookingTodo(models.Model):
+    """Zadanie do wykonania powiązane z rezerwacją."""
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="todos",
+        verbose_name="Rezerwacja",
+    )
+    text = models.CharField("Zadanie", max_length=300)
+    is_done = models.BooleanField("Wykonane", default=False)
+    created_at = models.DateTimeField("Utworzono", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Zadanie"
+        verbose_name_plural = "Zadania"
+        ordering = ["is_done", "created_at"]
+
+    def __str__(self):
+        mark = "✓" if self.is_done else "○"
+        return f"{mark} {self.text}"
+
+
 class SavedMenu(models.Model):
     """Menu restauracji zapisane przez klienta."""
 

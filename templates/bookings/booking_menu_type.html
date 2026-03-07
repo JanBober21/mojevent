@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Wybierz typ menu — Rezerwacja #{{ booking.pk }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'booking_list' %}">Moje rezerwacje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'booking_detail' booking.pk %}">Rezerwacja #{{ booking.pk }}</a></li>
+        <li class="breadcrumb-item active">Wybór typu menu</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
+                <h4 class="mb-0">
+                    <i class="bi bi-menu-app"></i>
+                    Jak chcesz skompletować menu?
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    <strong>{{ restaurant.name }}</strong> oferuje kilka sposobów planowania menu.
+                    Wybierz ten, który najlepiej pasuje do Twojej imprezy.
+                </p>
+
+                <div class="row g-3">
+                    {% for mt in menu_type_info %}
+                    <div class="col-md-6">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="select_type">
+                            <input type="hidden" name="menu_type" value="{{ mt.key }}">
+                            <button type="submit" class="btn btn-light border w-100 h-100 text-start p-0" style="min-height:160px;">
+                                <div class="card h-100 border-0">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="rounded-circle bg-{{ mt.color }} bg-opacity-10 d-inline-flex align-items-center justify-content-center me-3" style="width:48px;height:48px;">
+                                                <i class="bi {{ mt.icon }} text-{{ mt.color }} fs-4"></i>
+                                            </span>
+                                            <h5 class="mb-0 fw-bold">{{ mt.label }}</h5>
+                                        </div>
+                                        <p class="text-muted mb-3 flex-grow-1">{{ mt.desc_client }}</p>
+                                        <div class="text-end">
+                                            <span class="btn btn-{{ mt.color }} btn-sm">
+                                                Wybierz <i class="bi bi-arrow-right"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <hr class="my-4">
+                <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Wróć do rezerwacji
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

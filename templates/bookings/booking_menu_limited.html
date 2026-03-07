@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}{{ type_label }} — Rezerwacja #{{ booking.pk }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'booking_list' %}">Moje rezerwacje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'booking_detail' booking.pk %}">Rezerwacja #{{ booking.pk }}</a></li>
+        <li class="breadcrumb-item active">{{ type_label }}</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff;">
+                <h4 class="mb-0">
+                    <i class="bi bi-card-checklist"></i>
+                    {{ type_label }} — {{ restaurant.name }}
+                </h4>
+                {% if can_change_type %}
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_type">
+                    <button type="submit" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-arrow-repeat"></i> Zmień typ
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success border-0" style="background: #ecfdf5;">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Jak to działa?</strong> Zaznacz 2–3 dania z każdej kategorii.
+                    To będzie Twoja <strong>karta menu</strong> na imprezę — goście na miejscu
+                    zamówią od kelnera po jednym daniu z każdej grupy.
+                </div>
+
+                <form method="post" id="limitedForm">
+                    {% csrf_token %}
+                    {% for group in menu_by_category %}
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">
+                                <i class="bi bi-tag text-success"></i> {{ group.label }}
+                            </h5>
+                            <span class="badge bg-success bg-opacity-10 text-success count-badge" data-cat="{{ group.value }}">
+                                <span class="cat-count" data-cat="{{ group.value }}">0</span> wybrane
+                            </span>
+                        </div>
+                        <div class="row g-2">
+                            {% for entry in group.items %}
+                            <div class="col-md-6 col-lg-4">
+                                <label class="card h-100 menu-card border {% if entry.selected %}border-success shadow-sm{% endif %}"
+                                       for="sel_{{ entry.item.id }}" style="cursor:pointer;">
+                                    <div class="card-body py-2 px-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input limited-check"
+                                                   type="checkbox"
+                                                   name="sel_{{ entry.item.id }}"
+                                                   id="sel_{{ entry.item.id }}"
+                                                   value="1"
+                                                   data-cat="{{ group.value }}"
+                                                   {% if entry.selected %}checked{% endif %}>
+                                            <div class="form-check-label w-100">
+                                                <div class="fw-semibold">{{ entry.item.name }}</div>
+                                                {% if entry.item.description %}
+                                                <small class="text-muted d-block">{{ entry.item.description|truncatewords:10 }}</small>
+                                                {% endif %}
+                                                <span class="badge bg-light text-dark mt-1">{{ entry.item.price }} zł</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <!-- Podsumowanie -->
+                    <div class="card bg-light border-success mt-4">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0"><i class="bi bi-card-checklist"></i> Karta menu</h5>
+                                <small class="text-muted">Łącznie <strong id="totalSelected">0</strong> pozycji na karcie</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-muted small">Goście wybiorą po 1 daniu z każdej kategorii</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Wróć
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-lg"></i> Zapisz kartę menu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.menu-card { transition: all .15s; }
+.menu-card:hover { border-color: #059669 !important; }
+.menu-card:has(input:checked) {
+    border-color: #059669 !important;
+    background: #f0fdf4;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, .15);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checks = document.querySelectorAll('.limited-check');
+
+    function updateCounts() {
+        const cats = {};
+        let total = 0;
+        checks.forEach(function(cb) {
+            const cat = cb.dataset.cat;
+            if (!cats[cat]) cats[cat] = 0;
+            if (cb.checked) { cats[cat]++; total++; }
+        });
+        document.querySelectorAll('.cat-count').forEach(function(el) {
+            el.textContent = cats[el.dataset.cat] || 0;
+        });
+        document.getElementById('totalSelected').textContent = total;
+    }
+
+    checks.forEach(function(cb) {
+        cb.addEventListener('change', updateCounts);
+    });
+
+    updateCounts();
+});
+</script>
+{% endblock %}

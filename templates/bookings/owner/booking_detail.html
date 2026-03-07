@@ -86,6 +86,18 @@
                 </div>
                 {% endif %}
 
+                {% if booking.menu_type %}
+                <div class="mt-4">
+                    <h6 class="text-muted mb-2"><i class="bi bi-menu-app"></i> Typ menu</h6>
+                    <span class="badge bg-primary bg-opacity-10 text-primary fs-6">
+                        {{ booking.get_menu_type_display }}
+                    </span>
+                    {% if booking.menu_selections.count %}
+                    <span class="text-muted ms-2">{{ booking.menu_selections.count }} pozycji wybranych</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <div class="mt-4">
                     <h6 class="text-muted mb-2">Historia rezerwacji</h6>
                     <div class="timeline">

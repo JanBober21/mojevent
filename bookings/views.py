@@ -10,11 +10,78 @@ from datetime import datetime, timedelta, date
 import json
 import math
 
-from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, BookingTodo, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate
+from .models import Restaurant, Booking, Review, RestaurantOwner, BookingNote, BookingTodo, Menu, MenuItem, BookingMenuItem, AttractionItem, BookingMessage, RestaurantImage, SavedMenu, MenuItemTemplate, BlockedDate, BookingCourse, MenuTypeChoice
 from .forms import BookingForm, ReviewForm, UserRegisterForm, RestaurantSearchForm, OwnerRegisterForm, RestaurantForm, UserSettingsForm
 from .style_scraper import scrape_styles
 from .social_scraper import import_from_urls, detect_platform, PLATFORM_LABELS, PLATFORM_ICONS
 from .calendar_utils import build_month_grid, get_day_details, MONTH_NAMES_PL
+
+
+# ── Stałe opisujące typy menu ──────────────────────────────────────────────
+MENU_TYPE_INFO = [
+    {
+        "key": "detailed",
+        "label": "Szczegółowy plan",
+        "icon": "bi-list-ol",
+        "color": "primary",
+        "desc_owner": (
+            "Klient wybiera z pełnej listy pozycje menu i określa dokładną "
+            "ilość każdego dania. Idealny gdy chcesz znać precyzyjne "
+            "zamówienie przed imprezą."
+        ),
+        "desc_client": (
+            "Wybierz z pełnej listy dania i wpisz ile porcji potrzebujesz. "
+            "Widzisz ceny i sumujesz dokładny koszt."
+        ),
+    },
+    {
+        "key": "limited",
+        "label": "Ograniczony Wybór",
+        "icon": "bi-card-checklist",
+        "color": "success",
+        "desc_owner": (
+            "Klient wybiera 2\u20133 dania z każdej kategorii do karty. "
+            "Goście na imprezie zamawiają od kelnera po 1 pozycji z karty. "
+            "Świetny kompromis między kontrolą a wyborem."
+        ),
+        "desc_client": (
+            "Wybierz 2\u20133 dań z każdej kategorii \u2014 na imprezie "
+            "goście sami zdecydują, które danie zamawiają od kelnera."
+        ),
+    },
+    {
+        "key": "buffet",
+        "label": "Szwedzki Stół",
+        "icon": "bi-table",
+        "color": "warning",
+        "desc_owner": (
+            "Klient wybiera dania i ustala kolejność serwowania na stół. "
+            "Goście sami sobie nakładają. Idealny na większe imprezy "
+            "i przyjęcia."
+        ),
+        "desc_client": (
+            "Wybierz dania i ustal kolejność, w jakiej trafią na stół \u2014 "
+            "goście nakładają sami ile chcą."
+        ),
+    },
+    {
+        "key": "custom_mix",
+        "label": "Własny Mix",
+        "icon": "bi-sliders",
+        "color": "info",
+        "desc_owner": (
+            "Klient układa własny plan: definiuje etapy (zupa, drugie danie, "
+            "deser\u2026), sposób serwowania i przypisuje dania do grup gości "
+            "(dorośli, dzieci, vege). Daje pełną kontrolę."
+        ),
+        "desc_client": (
+            "Ułóż swój plan: dodawaj etapy posiłku (zupa, główne, deser\u2026), "
+            "wybieraj dania i określ kto co dostaje."
+        ),
+    },
+]
+
+MENU_TYPE_MAP = {t["key"]: t for t in MENU_TYPE_INFO}
 
 
 def _get_owner_context(request):
@@ -976,6 +1043,15 @@ def owner_menu(request):
     if request.method == "POST":
         action = request.POST.get("action")
 
+        # ── Zapis włączonych typów menu ──
+        if action == "save_menu_types":
+            enabled = request.POST.getlist("menu_types")
+            valid_keys = {t["key"] for t in MENU_TYPE_INFO}
+            restaurant.enabled_menu_types = [k for k in enabled if k in valid_keys]
+            restaurant.save(update_fields=["enabled_menu_types"])
+            messages.success(request, "Dost\u0119pne typy menu zosta\u0142y zaktualizowane.")
+            return redirect("owner_menu")
+
         # ── Nowe menu ──
         if action == "create_menu":
             menu_name = request.POST.get("menu_name", "").strip()
@@ -1057,6 +1133,8 @@ def owner_menu(request):
     return render(request, "bookings/owner/menu_list.html", {
         "restaurant": restaurant,
         "all_menus": all_menus,
+        "menu_type_info": MENU_TYPE_INFO,
+        "enabled_menu_types": restaurant.enabled_menu_types or [],
     })
 
 
@@ -1191,9 +1269,56 @@ def owner_menu_detail(request, menu_id):
 
 # ── Wybór menu przez klienta ────────────────────────────────────────────────
 
+def _build_menu_by_category(menu_items, booking):
+    """Przygotuj dane menu pogrupowane wg kategorii z aktualnymi wyborami."""
+    current = {}
+    for s in booking.menu_selections.all():
+        current[s.menu_item_id] = {"qty": s.quantity, "serving_order": s.serving_order, "guest_group": s.guest_group}
+    categories = MenuItem.Category.choices
+    result = []
+    for cat_value, cat_label in categories:
+        items = menu_items.filter(category=cat_value)
+        items_data = []
+        for item in items:
+            sel = current.get(item.id, {})
+            items_data.append({
+                "item": item,
+                "qty": sel.get("qty", 0),
+                "selected": item.id in current,
+                "serving_order": sel.get("serving_order", 0),
+                "guest_group": sel.get("guest_group", ""),
+            })
+        if items_data:
+            result.append({"label": cat_label, "value": cat_value, "items": items_data})
+    return result
+
+
+def _log_menu_crm(booking, user, new_selections, old_selections, menu_type_label=""):
+    """Loguj zmiany menu w CRM."""
+    prefix = f"[{menu_type_label}] " if menu_type_label else ""
+    if new_selections:
+        changes_text = "\n".join(new_selections)
+        note_title = f"{prefix}Zmiana wyboru menu" if old_selections else f"{prefix}Wybór menu"
+        BookingNote.objects.create(
+            booking=booking,
+            author=user,
+            date=timezone.now().date(),
+            title=note_title,
+            content=f"Klient zaktualizował wybór menu:\n{changes_text}",
+        )
+    elif old_selections:
+        BookingNote.objects.create(
+            booking=booking,
+            author=user,
+            date=timezone.now().date(),
+            title=f"{prefix}Usunięcie wyboru menu",
+            content="Klient usunął wszystkie pozycje z menu.",
+        )
+
+
 @login_required
 def booking_menu_select(request, pk):
-    """Wybór/edycja menu przez klienta po rezerwacji."""
+    """Wybór/edycja menu przez klienta po rezerwacji — router po typie menu."""
     booking = get_object_or_404(Booking, pk=pk, user=request.user)
     restaurant = booking.restaurant
     active_menu = Menu.objects.filter(restaurant=restaurant, is_active=True).first()
@@ -1205,76 +1330,217 @@ def booking_menu_select(request, pk):
         messages.info(request, "Ta firma nie udostępniła jeszcze menu.")
         return redirect("booking_detail", pk=pk)
 
-    if request.method == "POST":
-        # Zbierz obecne wybory, żeby porównać z nowymi
+    # ── Określ dostępne typy menu ──
+    if restaurant.firm_type == Restaurant.FirmType.VENUE:
+        enabled_types = restaurant.enabled_menu_types or ["detailed"]
+    else:
+        enabled_types = ["detailed"]
+
+    # ── Wybór typu menu (jeśli potrzebny) ──
+    if not booking.menu_type:
+        if len(enabled_types) > 1:
+            # Pokaż selektor typów
+            if request.method == "POST" and request.POST.get("action") == "select_type":
+                selected = request.POST.get("menu_type")
+                if selected in enabled_types:
+                    booking.menu_type = selected
+                    booking.save(update_fields=["menu_type"])
+                    return redirect("booking_menu_select", pk=pk)
+            type_info = [t for t in MENU_TYPE_INFO if t["key"] in enabled_types]
+            return render(request, "bookings/booking_menu_type.html", {
+                "booking": booking,
+                "restaurant": restaurant,
+                "menu_type_info": type_info,
+            })
+        else:
+            booking.menu_type = enabled_types[0]
+            booking.save(update_fields=["menu_type"])
+
+    menu_type = booking.menu_type or "detailed"
+    menu_by_category = _build_menu_by_category(menu_items, booking)
+    type_label = MENU_TYPE_MAP.get(menu_type, {}).get("label", "")
+    can_change_type = len(enabled_types) > 1
+
+    # ── Zmiana typu menu ──
+    if request.method == "POST" and request.POST.get("action") == "change_type":
+        booking.menu_type = ""
+        booking.menu_selections.all().delete()
+        booking.courses.all().delete()
+        booking.save(update_fields=["menu_type"])
+        return redirect("booking_menu_select", pk=pk)
+
+    # ── POST: zapis wg typu ──
+    if request.method == "POST" and request.POST.get("action") != "change_type":
         old_selections = {s.menu_item_id: s.quantity for s in booking.menu_selections.all()}
 
-        # Usuń stare wybory
-        booking.menu_selections.all().delete()
+        if menu_type == "detailed":
+            return _save_menu_detailed(request, booking, menu_items, old_selections, type_label)
+        elif menu_type == "limited":
+            return _save_menu_limited(request, booking, menu_items, old_selections, type_label)
+        elif menu_type == "buffet":
+            return _save_menu_buffet(request, booking, menu_items, old_selections, type_label)
+        elif menu_type == "custom_mix":
+            return _save_menu_custom_mix(request, booking, menu_items, old_selections, type_label)
 
-        new_selections = []
-        for item in menu_items:
-            qty_str = request.POST.get(f"qty_{item.id}", "0")
-            try:
-                qty = int(qty_str)
-            except ValueError:
-                qty = 0
-            if qty > 0:
-                BookingMenuItem.objects.create(
-                    booking=booking,
-                    menu_item=item,
-                    quantity=qty,
-                )
-                new_selections.append(f"{item.name} x{qty}")
-
-        # Loguj w CRM
-        if new_selections:
-            changes_text = "\n".join(new_selections)
-            note_title = "Zmiana wyboru menu" if old_selections else "Wybór menu"
-            BookingNote.objects.create(
-                booking=booking,
-                author=request.user,
-                date=timezone.now().date(),
-                title=note_title,
-                content=f"Klient zaktualizował wybór menu:\n{changes_text}",
-            )
-            messages.success(request, "Menu zostało zapisane.")
-        else:
-            if old_selections:
-                BookingNote.objects.create(
-                    booking=booking,
-                    author=request.user,
-                    date=timezone.now().date(),
-                    title="Usunięcie wyboru menu",
-                    content="Klient usunął wszystkie pozycje z menu.",
-                )
-            messages.info(request, "Nie wybrano żadnych pozycji menu.")
-
-        return redirect("booking_detail", pk=pk)
-
-    # Przygotuj dane z aktualnymi wyborami
-    current_selections = {s.menu_item_id: s.quantity for s in booking.menu_selections.all()}
-    categories = MenuItem.Category.choices
-    menu_by_category = []
-    for cat_value, cat_label in categories:
-        items = menu_items.filter(category=cat_value)
-        items_with_qty = []
-        for item in items:
-            items_with_qty.append({
-                "item": item,
-                "qty": current_selections.get(item.id, 0),
-            })
-        if items_with_qty:
-            menu_by_category.append({
-                "label": cat_label,
-                "items": items_with_qty,
-            })
-
-    return render(request, "bookings/booking_menu.html", {
+    # ── GET: pokaz template wg typu ──
+    base_ctx = {
         "booking": booking,
         "restaurant": restaurant,
         "menu_by_category": menu_by_category,
-    })
+        "menu_type": menu_type,
+        "type_label": type_label,
+        "type_info": MENU_TYPE_MAP.get(menu_type, {}),
+        "can_change_type": can_change_type,
+    }
+
+    if menu_type == "limited":
+        return render(request, "bookings/booking_menu_limited.html", base_ctx)
+    elif menu_type == "buffet":
+        return render(request, "bookings/booking_menu_buffet.html", base_ctx)
+    elif menu_type == "custom_mix":
+        base_ctx["courses"] = booking.courses.prefetch_related("items__menu_item").all()
+        base_ctx["serving_styles"] = BookingCourse.ServingStyle.choices
+        return render(request, "bookings/booking_menu_custom.html", base_ctx)
+    else:
+        return render(request, "bookings/booking_menu.html", base_ctx)
+
+
+def _save_menu_detailed(request, booking, menu_items, old_selections, type_label):
+    """Zapis menu: Szczegółowy plan (ilości)."""
+    booking.menu_selections.all().delete()
+    new_selections = []
+    for item in menu_items:
+        qty_str = request.POST.get(f"qty_{item.id}", "0")
+        try:
+            qty = int(qty_str)
+        except ValueError:
+            qty = 0
+        if qty > 0:
+            BookingMenuItem.objects.create(booking=booking, menu_item=item, quantity=qty)
+            new_selections.append(f"{item.name} x{qty}")
+
+    _log_menu_crm(booking, request.user, new_selections, old_selections, type_label)
+    if new_selections:
+        messages.success(request, "Menu zostało zapisane.")
+    else:
+        messages.info(request, "Nie wybrano żadnych pozycji menu.")
+    return redirect("booking_detail", pk=booking.pk)
+
+
+def _save_menu_limited(request, booking, menu_items, old_selections, type_label):
+    """Zapis menu: Ograniczony Wybór (zaznaczone pozycje, bez ilości)."""
+    booking.menu_selections.all().delete()
+    new_selections = []
+    for item in menu_items:
+        if request.POST.get(f"sel_{item.id}"):
+            BookingMenuItem.objects.create(booking=booking, menu_item=item, quantity=1)
+            new_selections.append(f"{item.name} (na karcie)")
+
+    _log_menu_crm(booking, request.user, new_selections, old_selections, type_label)
+    if new_selections:
+        messages.success(request, "Karta menu została zapisana.")
+    else:
+        messages.info(request, "Nie wybrano żadnych pozycji do karty.")
+    return redirect("booking_detail", pk=booking.pk)
+
+
+def _save_menu_buffet(request, booking, menu_items, old_selections, type_label):
+    """Zapis menu: Szwedzki Stół (zaznaczone pozycje + kolejność)."""
+    booking.menu_selections.all().delete()
+    new_selections = []
+    order_counter = 1
+    # Items come ordered by their serving_order inputs
+    ordered_ids = request.POST.get("buffet_order", "").split(",")
+    for item_id_str in ordered_ids:
+        try:
+            item_id = int(item_id_str.strip())
+        except (ValueError, AttributeError):
+            continue
+        item = menu_items.filter(id=item_id).first()
+        if item and request.POST.get(f"sel_{item.id}"):
+            BookingMenuItem.objects.create(
+                booking=booking, menu_item=item, quantity=1, serving_order=order_counter,
+            )
+            new_selections.append(f"{order_counter}. {item.name}")
+            order_counter += 1
+    # Also handle checked items not in the order list
+    for item in menu_items:
+        if request.POST.get(f"sel_{item.id}") and not booking.menu_selections.filter(menu_item=item).exists():
+            BookingMenuItem.objects.create(
+                booking=booking, menu_item=item, quantity=1, serving_order=order_counter,
+            )
+            new_selections.append(f"{order_counter}. {item.name}")
+            order_counter += 1
+
+    _log_menu_crm(booking, request.user, new_selections, old_selections, type_label)
+    if new_selections:
+        messages.success(request, "Menu bufetowe zostało zapisane.")
+    else:
+        messages.info(request, "Nie wybrano żadnych pozycji na stół.")
+    return redirect("booking_detail", pk=booking.pk)
+
+
+def _save_menu_custom_mix(request, booking, menu_items, old_selections, type_label):
+    """Zapis menu: Własny Mix (etapy + pozycje z grupami gości)."""
+    action = request.POST.get("action", "")
+
+    # Dodaj nowy etap
+    if action == "add_course":
+        course_name = request.POST.get("course_name", "").strip()
+        serving_style = request.POST.get("serving_style", "for_all")
+        if course_name:
+            max_order = booking.courses.aggregate(m=Max("order"))["m"] or 0
+            BookingCourse.objects.create(
+                booking=booking, name=course_name, order=max_order + 1,
+                serving_style=serving_style,
+            )
+            messages.success(request, f'Dodano etap „{course_name}".')
+        return redirect("booking_menu_select", pk=booking.pk)
+
+    # Usuń etap
+    if action == "delete_course":
+        course_id = request.POST.get("course_id")
+        booking.courses.filter(id=course_id).delete()
+        messages.success(request, "Etap usunięty.")
+        return redirect("booking_menu_select", pk=booking.pk)
+
+    # Dodaj pozycję do etapu
+    if action == "add_course_item":
+        course_id = request.POST.get("course_id")
+        item_id = request.POST.get("item_id")
+        guest_group = request.POST.get("guest_group", "").strip()
+        course = booking.courses.filter(id=course_id).first()
+        item = menu_items.filter(id=item_id).first()
+        if course and item:
+            # Usuń z innych etapów jeśli istnieje
+            booking.menu_selections.filter(menu_item=item).delete()
+            max_order = course.items.aggregate(m=Max("serving_order"))["m"] or 0
+            BookingMenuItem.objects.create(
+                booking=booking, menu_item=item, quantity=1,
+                course=course, guest_group=guest_group,
+                serving_order=max_order + 1,
+            )
+        return redirect("booking_menu_select", pk=booking.pk)
+
+    # Usuń pozycję z etapu
+    if action == "remove_course_item":
+        sel_id = request.POST.get("selection_id")
+        booking.menu_selections.filter(id=sel_id).delete()
+        return redirect("booking_menu_select", pk=booking.pk)
+
+    # Finalizuj cały plan
+    if action == "finalize_mix":
+        new_selections = []
+        for course in booking.courses.all():
+            new_selections.append(f"— {course.name} ({course.get_serving_style_display()}) —")
+            for sel in course.items.select_related("menu_item").all():
+                grp = f" [{sel.guest_group}]" if sel.guest_group else ""
+                new_selections.append(f"  {sel.menu_item.name}{grp}")
+        _log_menu_crm(booking, request.user, new_selections, old_selections, type_label)
+        messages.success(request, "Plan menu został zapisany.")
+        return redirect("booking_detail", pk=booking.pk)
+
+    return redirect("booking_menu_select", pk=booking.pk)
 
 
 @login_required
@@ -1741,6 +2007,12 @@ def embed_booking_menu(request, slug, booking_pk):
             "booking": booking,
         })
 
+    # Ustaw typ menu jeśli brak
+    if not booking.menu_type:
+        enabled = restaurant.enabled_menu_types or ["detailed"]
+        booking.menu_type = enabled[0] if len(enabled) == 1 else "detailed"
+        booking.save(update_fields=["menu_type"])
+
     if request.method == "POST":
         # Zapisz wybrane pozycje menu
         booking.menu_selections.all().delete()
@@ -1764,15 +2036,7 @@ def embed_booking_menu(request, slug, booking_pk):
         })
 
     # Przygotuj dane menu
-    categories = MenuItem.Category.choices
-    menu_by_category = []
-    for cat_value, cat_label in categories:
-        items = menu_items.filter(category=cat_value)
-        items_with_qty = []
-        for item in items:
-            items_with_qty.append({"item": item, "qty": 0})
-        if items_with_qty:
-            menu_by_category.append({"label": cat_label, "items": items_with_qty})
+    menu_by_category = _build_menu_by_category(menu_items, booking)
 
     return render(request, "bookings/embed_booking_menu.html", {
         "restaurant": restaurant,

@@ -108,6 +108,14 @@ class Restaurant(models.Model):
         help_text="Automatycznie pobrane CSS/czcionki ze strony www restauracji.",
     )
 
+    # ── Typy menu dostępne dla klientów (tylko venue) ──────────────────────
+    enabled_menu_types = models.JSONField(
+        "Dostępne typy menu",
+        default=list,
+        blank=True,
+        help_text="Lista włączonych typów menu: detailed, limited, buffet, custom_mix",
+    )
+
     is_active = models.BooleanField("Aktywna", default=True)
     created_at = models.DateTimeField("Data utworzenia", auto_now_add=True)
     updated_at = models.DateTimeField("Data aktualizacji", auto_now=True)
@@ -273,6 +281,14 @@ class BlockedDate(models.Model):
         return f"{self.restaurant.name} — {self.date:%d.%m.%Y}"
 
 
+class MenuTypeChoice(models.TextChoices):
+    """Sposób kompletowania menu przy rezerwacji."""
+    DETAILED = "detailed", "Szczegółowy plan"
+    LIMITED = "limited", "Ograniczony Wybór"
+    BUFFET = "buffet", "Szwedzki Stół"
+    CUSTOM_MIX = "custom_mix", "Własny Mix"
+
+
 class Booking(models.Model):
     """Rezerwacja restauracji na uroczystość."""
 
@@ -298,6 +314,13 @@ class Booking(models.Model):
         "Typ uroczystości",
         max_length=20,
         choices=EventType.choices,
+        blank=True,
+    )
+    menu_type = models.CharField(
+        "Typ menu",
+        max_length=20,
+        choices=MenuTypeChoice.choices,
+        default="",
         blank=True,
     )
     event_date = models.DateField("Data uroczystości")
@@ -619,6 +642,22 @@ class BookingMenuItem(models.Model):
         verbose_name="Pozycja menu",
     )
     quantity = models.PositiveIntegerField("Ilość", default=1)
+    serving_order = models.PositiveIntegerField(
+        "Kolejność serwowania", default=0,
+        help_text="Używane w trybie Szwedzki stół i Własny mix.",
+    )
+    course = models.ForeignKey(
+        "BookingCourse",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="items",
+        verbose_name="Danie / etap",
+    )
+    guest_group = models.CharField(
+        "Grupa gości", max_length=50, blank=True, default="",
+        help_text="Np. Dorośli, Dzieci, Vege — używane w Własny mix.",
+    )
 
     class Meta:
         verbose_name = "Wybór menu"
@@ -631,6 +670,39 @@ class BookingMenuItem(models.Model):
     @property
     def subtotal(self):
         return self.menu_item.price * self.quantity
+
+
+class BookingCourse(models.Model):
+    """Etap / danie serwowane w trybie Własny Mix."""
+
+    class ServingStyle(models.TextChoices):
+        FOR_ALL = "for_all", "Dla wszystkich (jedno danie)"
+        CHOICE = "choice", "Do wyboru (goście wybierają)"
+        BUFFET = "buffet_style", "Na stół (goście nakładają)"
+        CONTINUOUS = "continuous", "Ciągłe serwowanie"
+
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="courses",
+        verbose_name="Rezerwacja",
+    )
+    name = models.CharField("Nazwa etapu", max_length=100)
+    order = models.PositiveIntegerField("Kolejność", default=0)
+    serving_style = models.CharField(
+        "Sposób serwowania",
+        max_length=20,
+        choices=ServingStyle.choices,
+        default=ServingStyle.FOR_ALL,
+    )
+
+    class Meta:
+        verbose_name = "Etap menu (Mix)"
+        verbose_name_plural = "Etapy menu (Mix)"
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_serving_style_display()})"
 
 
 class AttractionItem(models.Model):

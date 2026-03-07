@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}{{ type_label }} — Rezerwacja #{{ booking.pk }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'booking_list' %}">Moje rezerwacje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'booking_detail' booking.pk %}">Rezerwacja #{{ booking.pk }}</a></li>
+        <li class="breadcrumb-item active">{{ type_label }}</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #fff;">
+                <h4 class="mb-0">
+                    <i class="bi bi-table"></i>
+                    {{ type_label }} — {{ restaurant.name }}
+                </h4>
+                {% if can_change_type %}
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_type">
+                    <button type="submit" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-arrow-repeat"></i> Zmień typ
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="alert border-0" style="background: #fffbeb; color: #92400e;">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Jak to działa?</strong> Zaznacz dania, które mają trafić na stół.
+                    Następnie <strong>przeciągnij</strong> je lub ustaw numery, żeby określić
+                    kolejność serwowania. Goście sami sobie nakładają.
+                </div>
+
+                <form method="post" id="buffetForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="buffet_order" id="buffetOrder" value="">
+
+                    {% for group in menu_by_category %}
+                    <h5 class="mt-4 mb-3 border-bottom pb-2">
+                        <i class="bi bi-tag text-warning"></i> {{ group.label }}
+                    </h5>
+                    <div class="row g-2">
+                        {% for entry in group.items %}
+                        <div class="col-md-6 col-lg-4">
+                            <label class="card h-100 menu-card border {% if entry.selected %}border-warning shadow-sm{% endif %}"
+                                   for="sel_{{ entry.item.id }}" style="cursor:pointer;">
+                                <div class="card-body py-2 px-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input buffet-check"
+                                               type="checkbox"
+                                               name="sel_{{ entry.item.id }}"
+                                               id="sel_{{ entry.item.id }}"
+                                               value="1"
+                                               data-name="{{ entry.item.name }}"
+                                               data-price="{{ entry.item.price }}"
+                                               data-id="{{ entry.item.id }}"
+                                               data-order="{{ entry.serving_order }}"
+                                               {% if entry.selected %}checked{% endif %}>
+                                        <div class="form-check-label w-100">
+                                            <div class="fw-semibold">{{ entry.item.name }}</div>
+                                            {% if entry.item.description %}
+                                            <small class="text-muted d-block">{{ entry.item.description|truncatewords:10 }}</small>
+                                            {% endif %}
+                                            <span class="badge bg-light text-dark mt-1">{{ entry.item.price }} zł</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+
+                    <!-- Kolejność serwowania -->
+                    <div class="card border-warning mt-4">
+                        <div class="card-header bg-warning bg-opacity-10">
+                            <h5 class="mb-0"><i class="bi bi-sort-numeric-down"></i> Kolejność serwowania</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-3">
+                                Przeciągnij pozycje, aby ustalić kolejność podawania na stół.
+                                Pierwsze danie pojawi się jako pierwsze.
+                            </p>
+                            <ul class="list-group" id="sortableList">
+                                <!-- Wypełniane przez JS -->
+                            </ul>
+                            <div class="text-center text-muted py-3" id="emptyOrder">
+                                <i class="bi bi-arrow-up" style="font-size:1.5rem;"></i>
+                                <p class="mb-0">Zaznacz dania powyżej, a pojawią się tutaj do ustawienia kolejności.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Podsumowanie -->
+                    <div class="card bg-light border-warning mt-4">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0"><i class="bi bi-table"></i> Stół bufetowy</h5>
+                                <small class="text-muted"><strong id="totalBuffet">0</strong> dań na stole</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="fs-4 fw-bold text-warning" id="totalPrice">0.00 zł</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Wróć
+                        </a>
+                        <button type="submit" class="btn btn-warning btn-lg text-white">
+                            <i class="bi bi-check-lg"></i> Zapisz menu bufetowe
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.menu-card { transition: all .15s; }
+.menu-card:hover { border-color: #d97706 !important; }
+.menu-card:has(input:checked) {
+    border-color: #d97706 !important;
+    background: #fffbeb;
+    box-shadow: 0 0 0 2px rgba(217, 119, 6, .15);
+}
+#sortableList .list-group-item { cursor: grab; }
+#sortableList .list-group-item:active { cursor: grabbing; }
+.drag-over { border-top: 3px solid #d97706 !important; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checks = document.querySelectorAll('.buffet-check');
+    const sortable = document.getElementById('sortableList');
+    const emptyMsg = document.getElementById('emptyOrder');
+    const orderInput = document.getElementById('buffetOrder');
+
+    function rebuildSortable() {
+        // Gather checked items
+        const checked = [];
+        checks.forEach(function(cb) {
+            if (cb.checked) {
+                checked.push({
+                    id: cb.dataset.id,
+                    name: cb.dataset.name,
+                    price: cb.dataset.price,
+                    order: parseInt(cb.dataset.order) || 999,
+                });
+            }
+        });
+
+        // Get existing order from sortable list
+        const existingOrder = [];
+        sortable.querySelectorAll('.list-group-item').forEach(function(li) {
+            existingOrder.push(li.dataset.id);
+        });
+
+        // Sort: keep existing order for items already in list, append new ones at end
+        const ordered = [];
+        existingOrder.forEach(function(id) {
+            const item = checked.find(c => c.id === id);
+            if (item) ordered.push(item);
+        });
+        checked.forEach(function(item) {
+            if (!existingOrder.includes(item.id)) ordered.push(item);
+        });
+
+        // If first load and items have saved order, sort by order
+        if (existingOrder.length === 0 && ordered.length > 0) {
+            ordered.sort((a, b) => a.order - b.order);
+        }
+
+        sortable.innerHTML = '';
+        ordered.forEach(function(item, idx) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex align-items-center';
+            li.dataset.id = item.id;
+            li.draggable = true;
+            li.innerHTML = `
+                <span class="badge bg-warning text-dark me-3 fs-6 order-num">${idx + 1}</span>
+                <span class="flex-grow-1 fw-semibold">${item.name}</span>
+                <span class="text-muted">${item.price} zł</span>
+                <i class="bi bi-grip-vertical ms-3 text-muted fs-5"></i>
+            `;
+            sortable.appendChild(li);
+        });
+
+        emptyMsg.style.display = ordered.length ? 'none' : 'block';
+        updateTotal();
+        updateOrderInput();
+    }
+
+    function updateTotal() {
+        let count = 0, total = 0;
+        checks.forEach(function(cb) {
+            if (cb.checked) {
+                count++;
+                total += parseFloat(cb.dataset.price) || 0;
+            }
+        });
+        document.getElementById('totalBuffet').textContent = count;
+        document.getElementById('totalPrice').textContent = total.toFixed(2) + ' zł';
+    }
+
+    function updateOrderInput() {
+        const ids = [];
+        sortable.querySelectorAll('.list-group-item').forEach(function(li) {
+            ids.push(li.dataset.id);
+        });
+        orderInput.value = ids.join(',');
+    }
+
+    function renumber() {
+        sortable.querySelectorAll('.order-num').forEach(function(el, idx) {
+            el.textContent = idx + 1;
+        });
+        updateOrderInput();
+    }
+
+    // Checkbox events
+    checks.forEach(function(cb) {
+        cb.addEventListener('change', rebuildSortable);
+    });
+
+    // Drag and drop
+    let dragItem = null;
+    sortable.addEventListener('dragstart', function(e) {
+        dragItem = e.target.closest('.list-group-item');
+        dragItem.style.opacity = '0.5';
+    });
+    sortable.addEventListener('dragend', function(e) {
+        if (dragItem) dragItem.style.opacity = '1';
+        sortable.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        dragItem = null;
+    });
+    sortable.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        const target = e.target.closest('.list-group-item');
+        sortable.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        if (target && target !== dragItem) target.classList.add('drag-over');
+    });
+    sortable.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const target = e.target.closest('.list-group-item');
+        if (target && target !== dragItem && dragItem) {
+            sortable.insertBefore(dragItem, target);
+            renumber();
+        }
+    });
+
+    // Init
+    rebuildSortable();
+});
+</script>
+{% endblock %}

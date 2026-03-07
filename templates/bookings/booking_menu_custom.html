@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}{{ type_label }} — Rezerwacja #{{ booking.pk }} — EventBook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'booking_list' %}">Moje rezerwacje</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'booking_detail' booking.pk %}">Rezerwacja #{{ booking.pk }}</a></li>
+        <li class="breadcrumb-item active">{{ type_label }}</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-lg-11">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); color: #fff;">
+                <h4 class="mb-0">
+                    <i class="bi bi-sliders"></i>
+                    {{ type_label }} — {{ restaurant.name }}
+                </h4>
+                {% if can_change_type %}
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="change_type">
+                    <button type="submit" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-arrow-repeat"></i> Zmień typ
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="alert border-0" style="background: #ecfeff; color: #155e75;">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Jak to działa?</strong>
+                    Stwórz etapy posiłku (np. zupa, drugie danie, deser, napoje).
+                    Dla każdego etapu wybierz sposób serwowania i dodaj dania z menu.
+                    Możesz przypisać dania do grup gości (dorośli, dzieci, vege).
+                </div>
+
+                <!-- Dodaj nowy etap -->
+                <div class="card bg-light mb-4">
+                    <div class="card-body">
+                        <h6 class="mb-3"><i class="bi bi-plus-circle text-info"></i> Dodaj etap posiłku</h6>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_course">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label">Nazwa etapu</label>
+                                    <input type="text" name="course_name" class="form-control"
+                                           placeholder="np. Zupa, Drugie danie, Deser, Napoje" required>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Sposób serwowania</label>
+                                    <select name="serving_style" class="form-select">
+                                        {% for val, label in serving_styles %}
+                                        <option value="{{ val }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-info text-white w-100">
+                                        <i class="bi bi-plus-lg"></i> Dodaj etap
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <strong>Dla wszystkich</strong> — jedno danie dla każdego gościa &nbsp;|&nbsp;
+                                    <strong>Do wyboru</strong> — goście zamawiają jedno z kilku opcji &nbsp;|&nbsp;
+                                    <strong>Na stół</strong> — dania trafiają na stół, goście nakładają sami &nbsp;|&nbsp;
+                                    <strong>Ciągłe&nbsp;serwowanie</strong> — np. napoje przez cały czas
+                                </small>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista etapów -->
+                {% if courses %}
+                {% for course in courses %}
+                <div class="card mb-3 border-start border-4" style="border-color: #0891b2 !important;">
+                    <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                        <div>
+                            <span class="badge bg-info text-white me-2">{{ course.order }}</span>
+                            <strong class="fs-5">{{ course.name }}</strong>
+                            <span class="badge bg-light text-dark ms-2">
+                                {% if course.serving_style == 'for_all' %}
+                                    <i class="bi bi-people"></i> Dla wszystkich
+                                {% elif course.serving_style == 'choice' %}
+                                    <i class="bi bi-hand-index"></i> Do wyboru
+                                {% elif course.serving_style == 'buffet_style' %}
+                                    <i class="bi bi-table"></i> Na stół
+                                {% elif course.serving_style == 'continuous' %}
+                                    <i class="bi bi-arrow-repeat"></i> Ciągłe serwowanie
+                                {% endif %}
+                            </span>
+                        </div>
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_course">
+                            <input type="hidden" name="course_id" value="{{ course.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Usunąć etap „{{ course.name }}" i wszystkie jego pozycje?')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <!-- Items in this course -->
+                        {% if course.items.all %}
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Danie</th>
+                                        <th>Kategoria</th>
+                                        <th>Cena</th>
+                                        <th>Grupa gości</th>
+                                        <th class="text-end">Akcja</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sel in course.items.all %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ sel.menu_item.name }}</td>
+                                        <td><span class="badge bg-secondary">{{ sel.menu_item.get_category_display }}</span></td>
+                                        <td>{{ sel.menu_item.price }} zł</td>
+                                        <td>
+                                            {% if sel.guest_group %}
+                                            <span class="badge bg-info bg-opacity-10 text-info">{{ sel.guest_group }}</span>
+                                            {% else %}
+                                            <span class="text-muted">Wszyscy</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="remove_course_item">
+                                                <input type="hidden" name="selection_id" value="{{ sel.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted small mb-3"><i class="bi bi-info-circle"></i> Brak dań w tym etapie. Dodaj poniżej.</p>
+                        {% endif %}
+
+                        <!-- Add item to course -->
+                        <form method="post" class="bg-light rounded p-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_course_item">
+                            <input type="hidden" name="course_id" value="{{ course.id }}">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label small">Danie z menu</label>
+                                    <select name="item_id" class="form-select form-select-sm" required>
+                                        <option value="">— wybierz danie —</option>
+                                        {% for group in menu_by_category %}
+                                        <optgroup label="{{ group.label }}">
+                                            {% for entry in group.items %}
+                                            <option value="{{ entry.item.id }}">{{ entry.item.name }} ({{ entry.item.price }} zł)</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">Grupa gości <span class="text-muted">(opcjonalnie)</span></label>
+                                    <input type="text" name="guest_group" class="form-control form-control-sm"
+                                           placeholder="np. Dorośli, Dzieci, Vege" list="guestGroups">
+                                    <datalist id="guestGroups">
+                                        <option value="Dorośli">
+                                        <option value="Dzieci">
+                                        <option value="Vege">
+                                        <option value="Wszyscy">
+                                    </datalist>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-sm btn-info text-white w-100">
+                                        <i class="bi bi-plus"></i> Dodaj
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-sliders" style="font-size:2.5rem;"></i>
+                    <p class="mt-2 mb-0">Dodaj pierwszy etap posiłku powyżej, aby zacząć budować swój plan menu.</p>
+                </div>
+                {% endif %}
+
+                <!-- Finalize -->
+                {% if courses %}
+                <div class="card bg-light border-info mt-4">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-0"><i class="bi bi-sliders"></i> Plan menu</h5>
+                            <small class="text-muted">
+                                {{ courses|length }} etap{{ courses|length|pluralize:"ów,y,ów" }},
+                                {{ booking.menu_selections.count }} dań
+                            </small>
+                        </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="finalize_mix">
+                            <button type="submit" class="btn btn-info btn-lg text-white">
+                                <i class="bi bi-check-lg"></i> Zatwierdź plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                <hr>
+                <a href="{% url 'booking_detail' booking.pk %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Wróć do rezerwacji
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

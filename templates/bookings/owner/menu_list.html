@@ -24,6 +24,50 @@
 </div>
 {% endif %}
 
+{% if restaurant.firm_type == "venue" %}
+<!-- Typy menu dostępne dla klientów -->
+<div class="card shadow-sm mb-4 border-0" style="border-left: 4px solid #7c3aed !important;">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
+        <h5 class="mb-0"><i class="bi bi-menu-app"></i> Typy menu — jakie sposoby zamawiania oferujesz?</h5>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">
+            Wybierz, które sposoby kompletowania menu udostępniasz klientom przy rezerwacji.
+            Klient zobaczy tylko włączone opcje i sam zdecyduje, który tryb mu pasuje.
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_menu_types">
+            <div class="row g-3">
+                {% for mt in menu_type_info %}
+                <div class="col-md-6">
+                    <div class="card h-100 {% if mt.key in enabled_menu_types %}border-{{ mt.color }} shadow-sm{% else %}border-light{% endif %}">
+                        <div class="card-body">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox"
+                                       name="menu_types" value="{{ mt.key }}"
+                                       id="mt_{{ mt.key }}"
+                                       {% if mt.key in enabled_menu_types %}checked{% endif %}>
+                                <label class="form-check-label fw-bold fs-5" for="mt_{{ mt.key }}">
+                                    <i class="bi {{ mt.icon }} text-{{ mt.color }} me-1"></i> {{ mt.label }}
+                                </label>
+                            </div>
+                            <p class="text-muted small mb-0">{{ mt.desc_owner }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> Zapisz ustawienia typów menu
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- Formularz tworzenia nowego menu -->
 <div class="card shadow-sm mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">

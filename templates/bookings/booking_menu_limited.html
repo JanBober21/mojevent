@@ -14,20 +14,33 @@
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="card border-0 shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff;">
-                <h4 class="mb-0">
-                    <i class="bi bi-card-checklist"></i>
-                    {{ type_label }} — {{ restaurant.name }}
-                </h4>
-                {% if can_change_type %}
-                <form method="post" class="d-inline">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="change_type">
-                    <button type="submit" class="btn btn-sm btn-outline-light">
-                        <i class="bi bi-arrow-repeat"></i> Zmień typ
+            <div class="card-header" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #fff;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h4 class="mb-0">
+                        <i class="bi bi-card-checklist"></i>
+                        {{ type_label }} — {{ restaurant.name }}
+                    </h4>
+                    {% if can_change_type %}
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="change_type">
+                        <button type="submit" class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-arrow-repeat"></i> Zmień typ
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap" id="ai-bar">
+                    <span class="small opacity-75"><i class="bi bi-stars"></i> Generuj propozycję AI:</span>
+                    <div class="input-group input-group-sm" style="max-width:200px;">
+                        <input type="number" id="ai-budget" class="form-control form-control-sm" placeholder="Budżet (zł)" min="1" step="100" style="background:rgba(255,255,255,.9);">
+                        <span class="input-group-text" style="background:rgba(255,255,255,.7);">zł</span>
+                    </div>
+                    <button type="button" id="ai-generate-btn" class="btn btn-sm btn-warning fw-bold">
+                        <i class="bi bi-stars"></i> Generuj AI
                     </button>
-                </form>
-                {% endif %}
+                    <span id="ai-status" class="small opacity-75 d-none"></span>
+                </div>
             </div>
             <div class="card-body">
                 <div class="alert alert-success border-0" style="background: #ecfdf5;">
@@ -140,6 +153,56 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     updateCounts();
+
+    // ── AI Generowanie ──
+    var aiBtn = document.getElementById('ai-generate-btn');
+    var aiBudget = document.getElementById('ai-budget');
+    var aiStatus = document.getElementById('ai-status');
+
+    aiBtn.addEventListener('click', function() {
+        var budget = parseFloat(aiBudget.value);
+        if (!budget || budget <= 0) {
+            aiBudget.focus();
+            aiBudget.classList.add('is-invalid');
+            return;
+        }
+        aiBudget.classList.remove('is-invalid');
+        aiBtn.disabled = true;
+        aiStatus.classList.remove('d-none');
+        aiStatus.textContent = '⏳ Generuję propozycję...';
+
+        fetch('/api/menu-ai-suggest/{{ booking.pk }}/?budget=' + budget, {credentials: 'same-origin'})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    aiStatus.textContent = '❌ ' + data.error;
+                    aiBtn.disabled = false;
+                    return;
+                }
+                var selectedIds = new Set(data.suggestions.map(function(s) { return s.item_id; }));
+                // Ustaw checkboxy
+                checks.forEach(function(cb) {
+                    var itemId = parseInt(cb.id.replace('sel_', ''));
+                    cb.checked = selectedIds.has(itemId);
+                    // Visual update
+                    var card = cb.closest('.menu-card');
+                    if (card) {
+                        if (cb.checked) {
+                            card.classList.add('border-success', 'shadow-sm');
+                        } else {
+                            card.classList.remove('border-success', 'shadow-sm');
+                        }
+                    }
+                });
+                updateCounts();
+                aiStatus.textContent = '✅ Propozycja wygenerowana! Sugerowane ' + data.suggestions.length + ' pozycji';
+                aiBtn.disabled = false;
+            })
+            .catch(function() {
+                aiStatus.textContent = '❌ Błąd połączenia';
+                aiBtn.disabled = false;
+            });
+    });
 });
 </script>
 {% endblock %}

@@ -2152,6 +2152,189 @@ def dish_base_api(request):
     return JsonResponse(results[:30], safe=False)
 
 
+# ── AI propozycje menu ────────────────────────────────────────────────────────
+
+# Reguły podziału budżetu wg kategorii (procent)
+_CATEGORY_BUDGET_WEIGHTS = {
+    "appetizer": 0.12,
+    "soup": 0.10,
+    "main": 0.40,
+    "dessert": 0.13,
+    "buffet": 0.15,
+    "drink": 0.10,
+}
+
+
+def _generate_ai_menu(menu_items, guest_count, budget, menu_type):
+    """Algorytm generowania propozycji menu.
+
+    Strategia:
+    1. Rozdziel budżet na kategorie wg wag
+    2. Dla każdej kategorii dobierz pozycje miezszczące się w budżecie
+    3. Dla 'detailed' — dobierz ilości (≈ 1 porcja/gość main, 0.5 appetizer…)
+    4. Dla 'limited'  — zaznacz 2–3 najlepsze pozycje z kategorii
+    5. Dla 'buffet'   — zaznacz pozycje pasujące do budżetu, kolejność auto
+    6. Dla 'custom_mix' — jak limited
+    """
+    import random
+
+    budget = float(budget)
+    guests = max(int(guest_count or 10), 1)
+    budget_per_person = budget / guests
+
+    # Pogrupuj pozycje wg kategorii
+    by_cat = {}
+    for item in menu_items:
+        by_cat.setdefault(item.category, []).append(item)
+
+    # Mnożniki porcji na gościa wg kategorii (detailed)
+    qty_multiplier = {
+        "appetizer": 0.5,
+        "soup": 0.7,
+        "main": 1.0,
+        "dessert": 0.6,
+        "buffet": 0.8,
+        "drink": 1.5,
+    }
+
+    result = {}  # item_id → {qty, selected, serving_order}
+
+    if menu_type == "detailed":
+        # Rozdziel budżet na kategorie
+        remaining_budget = budget
+        present_cats = [c for c in by_cat if by_cat[c]]
+        total_weight = sum(_CATEGORY_BUDGET_WEIGHTS.get(c, 0.1) for c in present_cats)
+
+        for cat in present_cats:
+            items = sorted(by_cat[cat], key=lambda x: float(x.price))
+            weight = _CATEGORY_BUDGET_WEIGHTS.get(cat, 0.1) / total_weight
+            cat_budget = budget * weight
+            mult = qty_multiplier.get(cat, 1.0)
+
+            # Wybierz pozycje aż do wyczerpania budżetu kategorii
+            cat_spent = 0
+            for item in items:
+                price = float(item.price)
+                if price <= 0:
+                    continue
+                max_qty_by_budget = max(1, int((cat_budget - cat_spent) / price))
+                ideal_qty = max(1, round(guests * mult))
+                qty = min(ideal_qty, max_qty_by_budget)
+                if qty > 0 and cat_spent + (price * qty) <= cat_budget * 1.15:
+                    result[item.id] = {"qty": qty, "selected": True, "serving_order": 0}
+                    cat_spent += price * qty
+                    if cat_spent >= cat_budget * 0.85:
+                        break
+
+    elif menu_type in ("limited", "custom_mix"):
+        # Zaznacz 2–3 najlepsze pozycje z każdej kategorii
+        for cat, items in by_cat.items():
+            # Sortuj wg ceny (środek zakresu preferowany)
+            items_sorted = sorted(items, key=lambda x: float(x.price))
+            count = min(len(items_sorted), 3 if len(items_sorted) >= 4 else 2)
+            # Wybierz pozycje z różnych przedziałów cenowych
+            if len(items_sorted) >= 3:
+                step = len(items_sorted) / count
+                picked = [items_sorted[min(int(i * step), len(items_sorted) - 1)] for i in range(count)]
+            else:
+                picked = items_sorted[:count]
+
+            # Sprawdź czy mieści się w budżecie kategorii
+            weight = _CATEGORY_BUDGET_WEIGHTS.get(cat, 0.1)
+            cat_budget = budget * weight
+            total_price = sum(float(p.price) * guests for p in picked)
+
+            # Jeśli za drogo, odrzuć najdroższą
+            while total_price > cat_budget * 1.5 and len(picked) > 1:
+                picked.pop()
+                total_price = sum(float(p.price) * guests for p in picked)
+
+            for item in picked:
+                result[item.id] = {"qty": 1, "selected": True, "serving_order": 0}
+
+    elif menu_type == "buffet":
+        # Zaznacz pozycje, kolejność wg kategorii
+        order_counter = 1
+        cat_order = ["appetizer", "soup", "main", "buffet", "dessert", "drink"]
+        remaining = budget
+
+        for cat in cat_order:
+            items = by_cat.get(cat, [])
+            items_sorted = sorted(items, key=lambda x: float(x.price))
+            count = min(len(items_sorted), 3)
+            if not items_sorted:
+                continue
+            # Preferuj tańsze, ale dodaj 1 droższe jeśli starczy
+            picked = items_sorted[:count]
+            for item in picked:
+                cost = float(item.price) * guests
+                if remaining >= cost * 0.5:
+                    result[item.id] = {
+                        "qty": 1,
+                        "selected": True,
+                        "serving_order": order_counter,
+                    }
+                    remaining -= cost
+                    order_counter += 1
+
+    # Przelicz koszt
+    total_cost = 0
+    for item in menu_items:
+        if item.id in result:
+            total_cost += float(item.price) * result[item.id]["qty"]
+
+    return result, round(total_cost, 2)
+
+
+@login_required
+def menu_ai_suggest(request, pk):
+    """AJAX API — generuj propozycje menu AI na podstawie budżetu."""
+    booking = get_object_or_404(Booking, pk=pk, user=request.user)
+    restaurant = booking.restaurant
+    active_menu = Menu.objects.filter(restaurant=restaurant, is_active=True).first()
+
+    budget = request.GET.get("budget", "0")
+    try:
+        budget = float(str(budget).replace(",", ".").replace(" ", ""))
+    except ValueError:
+        budget = 0
+
+    if budget <= 0:
+        return JsonResponse({"error": "Podaj budżet większy od 0."}, status=400)
+
+    menu_type = booking.menu_type or "detailed"
+    menu_items = list(MenuItem.objects.filter(
+        restaurant=restaurant, is_visible=True, menu=active_menu,
+    )) if active_menu else []
+
+    if not menu_items:
+        return JsonResponse({"error": "Brak pozycji w menu."}, status=400)
+
+    suggestions, total_cost = _generate_ai_menu(
+        menu_items, booking.guest_count, budget, menu_type,
+    )
+
+    # Zwróć wyniki
+    result = []
+    for item in menu_items:
+        if item.id in suggestions:
+            s = suggestions[item.id]
+            result.append({
+                "item_id": item.id,
+                "qty": s["qty"],
+                "selected": s["selected"],
+                "serving_order": s.get("serving_order", 0),
+            })
+
+    return JsonResponse({
+        "suggestions": result,
+        "total_cost": total_cost,
+        "guest_count": booking.guest_count or 0,
+        "budget": budget,
+        "menu_type": menu_type,
+    })
+
+
 # ── API podpowiedzi menu ──────────────────────────────────────────────────────
 
 @login_required

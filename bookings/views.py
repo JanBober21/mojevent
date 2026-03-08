@@ -2299,6 +2299,16 @@ def menu_ai_suggest(request, pk):
     except ValueError:
         budget = 0
 
+    # Opcjonalne nadpisanie liczby gości
+    guests_override = request.GET.get("guests", "").strip()
+    if guests_override:
+        try:
+            guest_count = max(1, int(guests_override))
+        except (ValueError, TypeError):
+            guest_count = booking.guest_count
+    else:
+        guest_count = booking.guest_count
+
     if budget <= 0:
         return JsonResponse({"error": "Podaj budżet większy od 0."}, status=400)
 
@@ -2311,7 +2321,7 @@ def menu_ai_suggest(request, pk):
         return JsonResponse({"error": "Brak pozycji w menu."}, status=400)
 
     suggestions, total_cost = _generate_ai_menu(
-        menu_items, booking.guest_count, budget, menu_type,
+        menu_items, guest_count, budget, menu_type,
     )
 
     # Zwróć wyniki
@@ -2329,7 +2339,7 @@ def menu_ai_suggest(request, pk):
     return JsonResponse({
         "suggestions": result,
         "total_cost": total_cost,
-        "guest_count": booking.guest_count or 0,
+        "guest_count": guest_count or 0,
         "budget": budget,
         "menu_type": menu_type,
     })

@@ -357,7 +357,7 @@ class RestaurantForm(forms.ModelForm):
     class Meta:
         model = Restaurant
         fields = [
-            "firm_type", "attraction_type", "delivery_radius_km",
+            "firm_type", "also_catering", "attraction_type", "delivery_radius_km",
             "name", "description", "address", "city",
             "phone", "email", "website", "image_url",
             "max_guests", "price_per_person",
@@ -376,6 +376,7 @@ class RestaurantForm(forms.ModelForm):
         widgets = {
             "firm_type": forms.Select(attrs={"class": "form-select", "id": "id_firm_type"}),
             "attraction_type": forms.Select(attrs={"class": "form-select"}),
+            "also_catering": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_also_catering"}),
             "delivery_radius_km": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),

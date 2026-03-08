@@ -178,7 +178,13 @@ def restaurant_list(request):
         user_lng = form.cleaned_data.get("user_lng")
 
         if firm_type:
-            qs = qs.filter(firm_type=firm_type)
+            if firm_type == "catering":
+                # Catering: firmy catering LUB venue z also_catering
+                qs = qs.filter(
+                    Q(firm_type="catering") | Q(firm_type="venue", also_catering=True)
+                )
+            else:
+                qs = qs.filter(firm_type=firm_type)
             firm_type_filter = firm_type
         if city:
             qs = qs.filter(city__icontains=city)
@@ -1036,9 +1042,16 @@ def owner_menu(request):
     if not restaurant:
         return redirect("owner_restaurant_create")
 
-    all_menus = Menu.objects.filter(restaurant=restaurant).annotate(
+    all_menus = Menu.objects.filter(restaurant=restaurant, is_catering_menu=False).annotate(
         item_count=Count("items"),
     ).select_related("last_edited_by")
+
+    # Menu cateringowe (tylko dla venue z also_catering)
+    catering_menus = Menu.objects.none()
+    if restaurant.firm_type == "venue" and restaurant.also_catering:
+        catering_menus = Menu.objects.filter(restaurant=restaurant, is_catering_menu=True).annotate(
+            item_count=Count("items"),
+        ).select_related("last_edited_by")
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -1056,11 +1069,13 @@ def owner_menu(request):
         if action == "create_menu":
             menu_name = request.POST.get("menu_name", "").strip()
             menu_desc = request.POST.get("menu_description", "").strip()
+            is_catering = request.POST.get("is_catering_menu") == "1"
             if menu_name:
                 new_menu = Menu.objects.create(
                     restaurant=restaurant,
                     name=menu_name,
                     description=menu_desc,
+                    is_catering_menu=is_catering,
                     last_edited_by=request.user,
                 )
                 messages.success(request, f'Utworzono menu „{menu_name}".')
@@ -1073,7 +1088,11 @@ def owner_menu(request):
             menu_id = request.POST.get("menu_id")
             menu_obj = Menu.objects.filter(id=menu_id, restaurant=restaurant).first()
             if menu_obj:
-                Menu.objects.filter(restaurant=restaurant).update(is_active=False)
+                # Deaktywuj tylko menu w tej samej sekcji (lokal vs catering)
+                Menu.objects.filter(
+                    restaurant=restaurant,
+                    is_catering_menu=menu_obj.is_catering_menu,
+                ).update(is_active=False)
                 menu_obj.is_active = True
                 menu_obj.save(update_fields=["is_active"])
                 messages.success(request, f'Menu „{menu_obj.name}" jest teraz aktualnym menu.')
@@ -1087,6 +1106,7 @@ def owner_menu(request):
                     restaurant=restaurant,
                     name=f"Kopia {src.name}",
                     description=src.description,
+                    is_catering_menu=src.is_catering_menu,
                     last_edited_by=request.user,
                 )
                 # Skopiuj pozycje
@@ -1118,21 +1138,38 @@ def owner_menu(request):
 
         return redirect("owner_menu")
 
-    # Jeśli brak menu — utwórz domyślne
+    # Jeśli brak menu lokalowego — utwórz domyślne
     if not all_menus.exists():
         Menu.objects.create(
             restaurant=restaurant,
             name="Menu główne",
             is_active=True,
+            is_catering_menu=False,
             last_edited_by=request.user,
         )
-        all_menus = Menu.objects.filter(restaurant=restaurant).annotate(
+        all_menus = Menu.objects.filter(restaurant=restaurant, is_catering_menu=False).annotate(
+            item_count=Count("items"),
+        ).select_related("last_edited_by")
+
+    # Jeśli also_catering i brak menu cateringowego — utwórz domyślne
+    show_catering_section = restaurant.firm_type == "venue" and restaurant.also_catering
+    if show_catering_section and not catering_menus.exists():
+        Menu.objects.create(
+            restaurant=restaurant,
+            name="Menu cateringowe",
+            is_active=True,
+            is_catering_menu=True,
+            last_edited_by=request.user,
+        )
+        catering_menus = Menu.objects.filter(restaurant=restaurant, is_catering_menu=True).annotate(
             item_count=Count("items"),
         ).select_related("last_edited_by")
 
     return render(request, "bookings/owner/menu_list.html", {
         "restaurant": restaurant,
         "all_menus": all_menus,
+        "catering_menus": catering_menus,
+        "show_catering_section": show_catering_section,
         "menu_type_info": MENU_TYPE_INFO,
         "enabled_menu_types": restaurant.enabled_menu_types or [],
     })

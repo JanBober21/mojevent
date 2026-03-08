@@ -26,6 +26,11 @@ class Restaurant(models.Model):
         choices=AttractionType.choices, blank=True,
         help_text="Wypełnij tylko dla typu Atrakcje",
     )
+    also_catering = models.BooleanField(
+        "Catering na dowóz",
+        default=False,
+        help_text="Zaznacz jeśli firma typu 'Imprezy w lokalu' oferuje również catering z dowozem.",
+    )
     delivery_radius_km = models.PositiveIntegerField(
         "Promień dowozu (km)", default=10,
         help_text="Wypełnij tylko dla Cateringu",
@@ -532,6 +537,11 @@ class Menu(models.Model):
     name = models.CharField("Nazwa menu", max_length=200)
     description = models.TextField("Opis", blank=True, default="")
     is_active = models.BooleanField("Aktualne", default=False)
+    is_catering_menu = models.BooleanField(
+        "Menu cateringowe",
+        default=False,
+        help_text="Menu dla sekcji 'Catering na dowóz' (dotyczy firm venue z also_catering).",
+    )
     created_at = models.DateTimeField("Utworzono", auto_now_add=True)
     last_edited_by = models.ForeignKey(
         User,

@@ -46,6 +46,8 @@ class BookingForm(forms.ModelForm):
         if firm_type == "attraction":
             del self.fields["event_type"]
             del self.fields["guest_count"]
+        elif firm_type == "catering":
+            del self.fields["guest_count"]
         # Domyślne godziny dla nowej rezerwacji
         if not self.instance.pk:
             if not self.initial.get("event_start_time"):

@@ -327,6 +327,7 @@ def booking_create(request, restaurant_pk):
     """Tworzenie nowej rezerwacji."""
     restaurant = get_object_or_404(Restaurant, pk=restaurant_pk, is_active=True)
     is_attraction = restaurant.firm_type == Restaurant.FirmType.ATTRACTION
+    is_catering = restaurant.firm_type == Restaurant.FirmType.CATERING
 
     if request.method == "POST":
         form = BookingForm(request.POST, firm_type=restaurant.firm_type)
@@ -413,6 +414,7 @@ def booking_create(request, restaurant_pk):
         "form": form,
         "restaurant": restaurant,
         "is_attraction": is_attraction,
+        "is_catering": is_catering,
         "cal": cal,
     })
 

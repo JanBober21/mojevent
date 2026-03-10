@@ -142,7 +142,7 @@
                             <div class="text-danger small">{{ form.event_end_time.errors }}</div>
                             {% endif %}
                         </div>
-                        {% if not is_attraction %}
+                        {% if not is_attraction and not is_catering %}
                         <div class="col-md-6">
                             <label class="form-label">Liczba gości *</label>
                             {{ form.guest_count }}
@@ -192,7 +192,11 @@
 
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary btn-lg">
+                            {% if restaurant.firm_type == 'catering' %}
+                            <i class="bi bi-check-circle"></i> Złóż zamówienie
+                            {% else %}
                             <i class="bi bi-check-circle"></i> Złóż rezerwację
+                            {% endif %}
                         </button>
                         <a href="{% url 'restaurant_detail' restaurant.pk %}" class="btn btn-outline-secondary btn-lg ms-2">
                             Anuluj

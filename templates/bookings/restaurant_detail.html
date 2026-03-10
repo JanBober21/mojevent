@@ -295,12 +295,20 @@
                 <hr>
                 {% if user.is_authenticated %}
                 <a href="{% url 'booking_create' restaurant.pk %}" class="btn btn-primary btn-lg w-100">
+                    {% if restaurant.firm_type == 'catering' %}
+                    <i class="bi bi-cart-plus"></i> Zamów
+                    {% else %}
                     <i class="bi bi-calendar-plus"></i> Zarezerwuj
+                    {% endif %}
                 </a>
                 {% else %}
                 <a href="{% url 'login' %}?next={% url 'booking_create' restaurant.pk %}"
                    class="btn btn-primary btn-lg w-100">
+                    {% if restaurant.firm_type == 'catering' %}
+                    <i class="bi bi-box-arrow-in-right"></i> Zaloguj się, aby zamówić
+                    {% else %}
                     <i class="bi bi-box-arrow-in-right"></i> Zaloguj się, aby zarezerwować
+                    {% endif %}
                 </a>
                 {% endif %}
             </div>

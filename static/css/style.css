@@ -9,7 +9,8 @@
     position: relative;
     width: 100%;
     background: #f6f5f1;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: visible;
     padding: 80px 20px 72px;
     display: flex;
     align-items: center;
@@ -221,7 +222,7 @@
     border: 1px solid rgba(0,0,0,0.08);
     border-radius: 14px;
     padding: 5px;
-    z-index: 50;
+    z-index: 9999;
     box-shadow: 0 12px 40px -6px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.04);
     max-height: 240px;
     overflow-y: auto;

@@ -12,6 +12,7 @@
             <tr>
                 <th>#</th>
                 <th>Firma</th>
+                <th>Nazwa</th>
                 <th>Typ uroczystości</th>
                 <th>Data</th>
                 <th>Goście</th>
@@ -29,6 +30,7 @@
                         {{ booking.restaurant.name }}
                     </a>
                 </td>
+                <td>{{ booking.name|default:"—" }}</td>
                 <td>{{ booking.get_event_type_display }}</td>
                 <td>{{ booking.event_date|date:"d.m.Y" }}</td>
                 <td>{{ booking.guest_count }}</td>

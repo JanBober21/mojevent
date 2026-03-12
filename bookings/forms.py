@@ -17,6 +17,7 @@ class BookingForm(forms.ModelForm):
     class Meta:
         model = Booking
         fields = [
+            "name",
             "event_type",
             "event_date",
             "event_start_time",
@@ -29,6 +30,7 @@ class BookingForm(forms.ModelForm):
             "notes",
         ]
         widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "np. Wesele Kowalskich"}),
             "event_type": forms.Select(attrs={"class": "form-select"}),
             "event_start_time": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "event_end_time": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),

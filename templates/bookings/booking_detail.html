@@ -33,8 +33,15 @@
                             </a>
                         </p>
 
+                        {% if booking.name %}
+                        <h6 class="text-muted">Nazwa</h6>
+                        <p class="fs-5">{{ booking.name }}</p>
+                        {% endif %}
+
+                        {% if booking.event_type %}
                         <h6 class="text-muted">Typ uroczystości</h6>
                         <p class="fs-5">{{ booking.get_event_type_display }}</p>
+                        {% endif %}
 
                         <h6 class="text-muted">Data</h6>
                         <p class="fs-5">{{ booking.event_date|date:"d.m.Y" }}</p>

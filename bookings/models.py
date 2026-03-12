@@ -315,6 +315,12 @@ class Booking(models.Model):
         related_name="bookings",
         verbose_name="Firma",
     )
+    name = models.CharField(
+        "Nazwa",
+        max_length=200,
+        blank=True,
+        help_text="Opcjonalna nazwa rezerwacji / zamówienia.",
+    )
     event_type = models.CharField(
         "Typ uroczystości",
         max_length=20,

@@ -36,7 +36,10 @@
             <!-- Hidden inputs updated by JS dropdowns -->
             <input type="hidden" name="city" id="city-hidden" value="">
             <input type="hidden" name="firm_type" id="type-hidden" value="">
-            <input type="hidden" name="event_date" id="date-hidden" value="{% now 'Y-m-d' %}">
+            <input type="hidden" name="event_date" id="date-hidden" value="">
+            <input type="hidden" name="event_date_to" id="date-to-hidden" value="">
+            <input type="hidden" name="event_dates" id="dates-hidden" value="">
+            <input type="hidden" name="date_mode" id="date-mode-hidden" value="single">
 
             <div class="hero-search-row">
 
@@ -54,9 +57,14 @@
                     <div class="hero-dd-panel" id="city-panel"></div>
                 </div>
 
-                <!-- Date -->
-                <input type="date" class="hero-date-input" id="event-date-input"
-                       min="{% now 'Y-m-d' %}" value="{% now 'Y-m-d' %}" placeholder=" ">
+                <!-- Date picker -->
+                <div class="cal-picker-wrap" id="hero-cal-wrap">
+                    <div class="hero-date-input" id="hero-date-trigger">
+                        <i class="bi bi-calendar3" style="opacity:0.4;margin-right:6px;"></i>
+                        <span id="hero-date-label">Wybierz datę…</span>
+                    </div>
+                    <div class="cal-picker-panel" id="hero-cal-panel"></div>
+                </div>
 
                 <!-- Type dropdown -->
                 <div class="hero-dd-wrap" id="type-dd-wrap">
@@ -266,6 +274,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+{% include "bookings/_cal_picker.html" %}
+
 <!-- Hero interactive JS -->
 <script>
 (function() {
@@ -389,9 +399,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var typeIcon    = document.getElementById('type-icon');
     var typeHidden  = document.getElementById('type-hidden');
 
-    /* ── Date input ── */
-    var dateInput   = document.getElementById('event-date-input');
-    var dateHidden  = document.getElementById('date-hidden');
+    /* ── Date picker ── */
+    var dateHidden   = document.getElementById('date-hidden');
+    var dateToHidden = document.getElementById('date-to-hidden');
+    var datesHidden  = document.getElementById('dates-hidden');
+    var dateModeHidden = document.getElementById('date-mode-hidden');
 
     /* ── Search button ── */
     var searchBtn   = document.getElementById('hero-search-btn');
@@ -407,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateSearchBtn() {
         var hasCity = cityHidden.value.trim() !== '';
-        var hasDate = dateHidden.value.trim() !== '';
+        var hasDate = dateHidden.value.trim() !== '' || datesHidden.value.trim() !== '';
         var hasType = typeHidden.value.trim() !== '';
         var canSearch = hasCity || hasDate || hasType;
         searchBtn.disabled = !canSearch;
@@ -448,20 +460,6 @@ document.addEventListener('DOMContentLoaded', function() {
         opt.addEventListener('mouseout',  function() { this.style.background = ''; });
     });
 
-    /* Date input */
-    dateInput.addEventListener('change', function() {
-        dateHidden.value = this.value;
-        updateSearchBtn();
-    });
-    dateInput.addEventListener('focus', function() {
-        this.style.background = 'rgba(124,58,237,0.03)';
-        this.style.borderColor = 'rgba(124,58,237,0.25)';
-    });
-    dateInput.addEventListener('blur', function() {
-        this.style.background = '';
-        this.style.borderColor = '';
-    });
-
     /* Close dropdowns on outside click */
     document.addEventListener('click', function(e) {
         if (!cityWrap.contains(e.target)) {
@@ -472,6 +470,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     cityPanel.addEventListener('click', function(e) { e.stopPropagation(); });
     typePanel.addEventListener('click', function(e) { e.stopPropagation(); });
+
+    /* ── Calendar picker init ── */
+    initCalPicker({
+        wrapId: 'hero-cal-wrap',
+        triggerId: 'hero-date-trigger',
+        panelId: 'hero-cal-panel',
+        labelId: 'hero-date-label',
+        hiddenDate: dateHidden,
+        hiddenDateTo: dateToHidden,
+        hiddenDates: datesHidden,
+        hiddenMode: dateModeHidden,
+        onChange: updateSearchBtn,
+    });
 
     /* ── Geolocation → reverse geocoding → auto-fill city ── */
     var CITY_STORAGE_KEY = 'eventbook_user_city';

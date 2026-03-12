@@ -6,26 +6,29 @@
 <h1 class="mb-4"><i class="bi bi-shop"></i> Firmy</h1>
 
 <!-- Zakładki typów firm (zachowują parametry wyszukiwania) -->
+{% with date_params="" %}
+{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}{% if request.GET.event_date_to %}&event_date_to={{ request.GET.event_date_to }}{% endif %}{% if request.GET.event_dates %}&event_dates={{ request.GET.event_dates|urlencode }}{% endif %}{% if request.GET.date_mode %}&date_mode={{ request.GET.date_mode }}{% endif %}
+{% endwith %}
 <ul class="nav nav-pills mb-4">
     <li class="nav-item">
         <a class="nav-link {% if not firm_type_filter %}active{% endif %}"
-           href="{% url 'restaurant_list' %}?{% if request.GET.city %}city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">Wszystkie</a>
+           href="{% url 'restaurant_list' %}?{% if request.GET.city %}city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}{% if request.GET.event_date_to %}&event_date_to={{ request.GET.event_date_to }}{% endif %}{% if request.GET.event_dates %}&event_dates={{ request.GET.event_dates|urlencode }}{% endif %}{% if request.GET.date_mode %}&date_mode={{ request.GET.date_mode }}{% endif %}">Wszystkie</a>
     </li>
     <li class="nav-item">
         <a class="nav-link {% if firm_type_filter == 'venue' %}active{% endif %}"
-           href="{% url 'restaurant_list' %}?firm_type=venue{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">
+           href="{% url 'restaurant_list' %}?firm_type=venue{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}{% if request.GET.event_date_to %}&event_date_to={{ request.GET.event_date_to }}{% endif %}{% if request.GET.event_dates %}&event_dates={{ request.GET.event_dates|urlencode }}{% endif %}{% if request.GET.date_mode %}&date_mode={{ request.GET.date_mode }}{% endif %}">
             <i class="bi bi-building"></i> Imprezy w lokalu
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link {% if firm_type_filter == 'catering' %}active{% endif %}"
-           href="{% url 'restaurant_list' %}?firm_type=catering{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">
+           href="{% url 'restaurant_list' %}?firm_type=catering{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}{% if request.GET.event_date_to %}&event_date_to={{ request.GET.event_date_to }}{% endif %}{% if request.GET.event_dates %}&event_dates={{ request.GET.event_dates|urlencode }}{% endif %}{% if request.GET.date_mode %}&date_mode={{ request.GET.date_mode }}{% endif %}">
             <i class="bi bi-truck"></i> Catering z dowozem
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link {% if firm_type_filter == 'attraction' %}active{% endif %}"
-           href="{% url 'restaurant_list' %}?firm_type=attraction{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}">
+           href="{% url 'restaurant_list' %}?firm_type=attraction{% if request.GET.city %}&city={{ request.GET.city|urlencode }}{% endif %}{% if request.GET.event_date %}&event_date={{ request.GET.event_date }}{% endif %}{% if request.GET.event_date_to %}&event_date_to={{ request.GET.event_date_to }}{% endif %}{% if request.GET.event_dates %}&event_dates={{ request.GET.event_dates|urlencode }}{% endif %}{% if request.GET.date_mode %}&date_mode={{ request.GET.date_mode }}{% endif %}">
             <i class="bi bi-camera-fill"></i> Atrakcje
         </a>
     </li>
@@ -40,6 +43,9 @@
             {% endif %}
             {{ form.user_lat }}
             {{ form.user_lng }}
+            {{ form.date_mode }}
+            {{ form.event_date_to }}
+            {{ form.event_dates }}
 
             <div class="card shadow-sm">
                 <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: #fff;">
@@ -56,6 +62,11 @@
                     <!-- Data -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold"><i class="bi bi-calendar3"></i> Wolny termin</label>
+                        <div id="sidebar-cal-wrap">
+                            <div id="sidebar-cal-trigger" style="display:none;"></div>
+                            <div id="sidebar-cal-label" style="display:none;"></div>
+                            <div class="cal-picker-panel sidebar-variant open" id="sidebar-cal-panel"></div>
+                        </div>
                         {{ form.event_date }}
                     </div>
 
@@ -264,6 +275,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% include "bookings/_cal_picker.html" %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ── Slider gości → pole min_guests ──
@@ -301,6 +313,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // ── Sidebar calendar picker ──
+    var sidebarDateInput = document.getElementById('id_event_date');
+    if (sidebarDateInput) sidebarDateInput.style.display = 'none';
+
+    initCalPicker({
+        wrapId: 'sidebar-cal-wrap',
+        triggerId: 'sidebar-cal-trigger',
+        panelId: 'sidebar-cal-panel',
+        labelId: 'sidebar-cal-label',
+        hiddenDate: sidebarDateInput || document.createElement('input'),
+        hiddenDateTo: document.getElementById('id_event_date_to') || document.createElement('input'),
+        hiddenDates: document.getElementById('id_event_dates') || document.createElement('input'),
+        hiddenMode: document.getElementById('id_date_mode') || document.createElement('input'),
+        onChange: function() {},
+        sidebar: true,
+    });
 });
 </script>
 {% endblock %}

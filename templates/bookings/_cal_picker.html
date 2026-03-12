@@ -1,0 +1,349 @@
+<!-- Shared calendar picker JS — included by home.html and restaurant_list.html -->
+<script>
+(function() {
+    var MONTHS_PL = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
+                     'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+    var DOWS = ['Pn','Wt','Śr','Cz','Pt','So','Nd'];
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function toISO(d) {
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+
+    function parseISO(s) {
+        var p = s.split('-');
+        return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+    }
+
+    function formatShort(d) {
+        return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear();
+    }
+
+    function sameDay(a, b) {
+        return a.getFullYear() === b.getFullYear() &&
+               a.getMonth() === b.getMonth() &&
+               a.getDate() === b.getDate();
+    }
+
+    function daysInMonth(y, m) {
+        return new Date(y, m + 1, 0).getDate();
+    }
+
+    window.initCalPicker = function(cfg) {
+        var wrap   = document.getElementById(cfg.wrapId);
+        var trigger = document.getElementById(cfg.triggerId);
+        var panel  = document.getElementById(cfg.panelId);
+        var label  = document.getElementById(cfg.labelId);
+        var hDate  = cfg.hiddenDate;
+        var hDateTo = cfg.hiddenDateTo;
+        var hDates = cfg.hiddenDates;
+        var hMode  = cfg.hiddenMode;
+        var onChange = cfg.onChange || function() {};
+        var sidebar = cfg.sidebar || false;
+
+        var today = new Date();
+        today.setHours(0,0,0,0);
+        var viewYear = today.getFullYear();
+        var viewMonth = today.getMonth();
+
+        var mode = 'single'; // single | range | multi
+        var selectedDate = null;
+        var rangeStart = null;
+        var rangeEnd = null;
+        var multiDates = []; // array of Date
+
+        function syncHidden() {
+            if (mode === 'single') {
+                hDate.value = selectedDate ? toISO(selectedDate) : '';
+                hDateTo.value = '';
+                hDates.value = '';
+                hMode.value = 'single';
+            } else if (mode === 'range') {
+                hDate.value = rangeStart ? toISO(rangeStart) : '';
+                hDateTo.value = rangeEnd ? toISO(rangeEnd) : '';
+                hDates.value = '';
+                hMode.value = 'range';
+            } else {
+                hDate.value = '';
+                hDateTo.value = '';
+                hDates.value = multiDates.map(toISO).join(',');
+                hMode.value = 'multi';
+            }
+            updateLabel();
+            onChange();
+        }
+
+        function updateLabel() {
+            var text = '';
+            if (mode === 'single' && selectedDate) {
+                text = formatShort(selectedDate);
+            } else if (mode === 'range' && rangeStart) {
+                text = formatShort(rangeStart);
+                if (rangeEnd && !sameDay(rangeStart, rangeEnd)) {
+                    text += ' → ' + formatShort(rangeEnd);
+                }
+            } else if (mode === 'multi' && multiDates.length) {
+                if (multiDates.length <= 2) {
+                    text = multiDates.map(formatShort).join(', ');
+                } else {
+                    text = multiDates.length + ' dni';
+                }
+            }
+
+            if (text) {
+                label.textContent = text;
+                trigger.classList.add('has-value');
+            } else {
+                label.textContent = 'Wybierz datę…';
+                trigger.classList.remove('has-value');
+            }
+        }
+
+        function clearSelection() {
+            selectedDate = null;
+            rangeStart = null;
+            rangeEnd = null;
+            multiDates = [];
+            syncHidden();
+            render();
+        }
+
+        function render() {
+            panel.innerHTML = '';
+
+            // Mode tabs
+            var tabs = document.createElement('div');
+            tabs.className = 'cal-mode-tabs';
+            var modes = [
+                { key: 'single', label: 'Dzień' },
+                { key: 'range',  label: 'Okres' },
+                { key: 'multi',  label: 'Wybrane dni' },
+            ];
+            modes.forEach(function(m) {
+                var tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'cal-mode-tab' + (mode === m.key ? ' active' : '');
+                tab.textContent = m.label;
+                tab.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    mode = m.key;
+                    clearSelection();
+                });
+                tabs.appendChild(tab);
+            });
+            panel.appendChild(tabs);
+
+            // Navigation
+            var nav = document.createElement('div');
+            nav.className = 'cal-nav';
+            var prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.className = 'cal-nav-btn';
+            prevBtn.innerHTML = '‹';
+            prevBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                viewMonth--;
+                if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+                render();
+            });
+            var nextBtn = document.createElement('button');
+            nextBtn.type = 'button';
+            nextBtn.className = 'cal-nav-btn';
+            nextBtn.innerHTML = '›';
+            nextBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                viewMonth++;
+                if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+                render();
+            });
+            var title = document.createElement('span');
+            title.className = 'cal-nav-title';
+            title.textContent = MONTHS_PL[viewMonth] + ' ' + viewYear;
+            nav.appendChild(prevBtn);
+            nav.appendChild(title);
+            nav.appendChild(nextBtn);
+            panel.appendChild(nav);
+
+            // Day grid
+            var grid = document.createElement('div');
+            grid.className = 'cal-grid';
+
+            // Day-of-week headers
+            DOWS.forEach(function(d) {
+                var el = document.createElement('div');
+                el.className = 'cal-dow';
+                el.textContent = d;
+                grid.appendChild(el);
+            });
+
+            // Empty cells for first week
+            var firstDay = new Date(viewYear, viewMonth, 1).getDay();
+            var startOffset = firstDay === 0 ? 6 : firstDay - 1; // Monday-based
+            for (var i = 0; i < startOffset; i++) {
+                var empty = document.createElement('div');
+                empty.className = 'cal-day empty';
+                grid.appendChild(empty);
+            }
+
+            // Days
+            var numDays = daysInMonth(viewYear, viewMonth);
+            for (var d = 1; d <= numDays; d++) {
+                (function(day) {
+                    var date = new Date(viewYear, viewMonth, day);
+                    var el = document.createElement('div');
+                    el.className = 'cal-day';
+                    el.textContent = day;
+
+                    // Today
+                    if (sameDay(date, today)) {
+                        el.classList.add('today');
+                    }
+
+                    // Disabled (past)
+                    if (date < today) {
+                        el.classList.add('disabled');
+                        grid.appendChild(el);
+                        return;
+                    }
+
+                    // Selection classes
+                    if (mode === 'single' && selectedDate && sameDay(date, selectedDate)) {
+                        el.classList.add('selected');
+                    }
+                    if (mode === 'range') {
+                        if (rangeStart && sameDay(date, rangeStart)) {
+                            el.classList.add('range-start');
+                        }
+                        if (rangeEnd && sameDay(date, rangeEnd)) {
+                            el.classList.add('range-end');
+                        }
+                        if (rangeStart && rangeEnd && date > rangeStart && date < rangeEnd) {
+                            el.classList.add('in-range');
+                        }
+                    }
+                    if (mode === 'multi') {
+                        for (var mi = 0; mi < multiDates.length; mi++) {
+                            if (sameDay(date, multiDates[mi])) {
+                                el.classList.add('selected');
+                                break;
+                            }
+                        }
+                    }
+
+                    el.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (mode === 'single') {
+                            selectedDate = date;
+                            syncHidden();
+                            render();
+                            if (!sidebar) {
+                                setTimeout(function() { closePickerPanel(); }, 200);
+                            }
+                        } else if (mode === 'range') {
+                            if (!rangeStart || (rangeStart && rangeEnd)) {
+                                rangeStart = date;
+                                rangeEnd = null;
+                            } else {
+                                if (date < rangeStart) {
+                                    rangeEnd = rangeStart;
+                                    rangeStart = date;
+                                } else {
+                                    rangeEnd = date;
+                                }
+                            }
+                            syncHidden();
+                            render();
+                        } else if (mode === 'multi') {
+                            var idx = -1;
+                            for (var mi = 0; mi < multiDates.length; mi++) {
+                                if (sameDay(date, multiDates[mi])) { idx = mi; break; }
+                            }
+                            if (idx >= 0) {
+                                multiDates.splice(idx, 1);
+                            } else {
+                                multiDates.push(date);
+                                multiDates.sort(function(a, b) { return a - b; });
+                            }
+                            syncHidden();
+                            render();
+                        }
+                    });
+
+                    grid.appendChild(el);
+                })(d);
+            }
+            panel.appendChild(grid);
+
+            // Summary
+            var hasSelection = (mode === 'single' && selectedDate) ||
+                               (mode === 'range' && rangeStart) ||
+                               (mode === 'multi' && multiDates.length);
+            if (hasSelection) {
+                var sum = document.createElement('div');
+                sum.className = 'cal-summary';
+                var info = document.createElement('span');
+                if (mode === 'single') {
+                    info.textContent = formatShort(selectedDate);
+                } else if (mode === 'range' && rangeStart) {
+                    info.textContent = formatShort(rangeStart) + (rangeEnd ? ' → ' + formatShort(rangeEnd) : ' → …');
+                } else if (mode === 'multi') {
+                    info.textContent = 'Zaznaczono: ' + multiDates.length + ' ' + (multiDates.length === 1 ? 'dzień' : 'dni');
+                }
+                var clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'cal-summary-clear';
+                clearBtn.textContent = 'Wyczyść';
+                clearBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    clearSelection();
+                });
+                sum.appendChild(info);
+                sum.appendChild(clearBtn);
+                panel.appendChild(sum);
+            }
+        }
+
+        function openPickerPanel() {
+            trigger.classList.add('open');
+            panel.classList.add('open');
+            render();
+        }
+
+        function closePickerPanel() {
+            trigger.classList.remove('open');
+            panel.classList.remove('open');
+        }
+
+        // For sidebar variant — always visible
+        if (sidebar) {
+            panel.classList.add('sidebar-variant');
+            panel.classList.add('open');
+            render();
+        }
+
+        // Toggle on click
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (panel.classList.contains('open') && !sidebar) {
+                closePickerPanel();
+            } else {
+                openPickerPanel();
+            }
+        });
+
+        // Close on outside click (non-sidebar only)
+        if (!sidebar) {
+            document.addEventListener('click', function(e) {
+                if (!wrap.contains(e.target)) {
+                    closePickerPanel();
+                }
+            });
+            panel.addEventListener('click', function(e) { e.stopPropagation(); });
+        }
+
+        // Init label
+        updateLabel();
+    };
+})();
+</script>

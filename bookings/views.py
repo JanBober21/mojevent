@@ -200,7 +200,31 @@ def restaurant_list(request):
         if city:
             qs = qs.filter(city__icontains=city)
         event_date = form.cleaned_data.get("event_date")
-        if event_date:
+        event_date_to = form.cleaned_data.get("event_date_to")
+        event_dates_raw = form.cleaned_data.get("event_dates", "")
+        date_mode = form.cleaned_data.get("date_mode", "single")
+
+        if date_mode == "range" and event_date and event_date_to:
+            booked_ids = Booking.objects.filter(
+                event_date__range=[event_date, event_date_to],
+            ).exclude(status="cancelled").values_list("restaurant_id", flat=True)
+            qs = qs.exclude(pk__in=booked_ids)
+        elif date_mode == "multi" and event_dates_raw:
+            import datetime as _dt
+            date_list = []
+            for d in event_dates_raw.split(","):
+                d = d.strip()
+                if d:
+                    try:
+                        date_list.append(_dt.date.fromisoformat(d))
+                    except ValueError:
+                        pass
+            if date_list:
+                booked_ids = Booking.objects.filter(
+                    event_date__in=date_list,
+                ).exclude(status="cancelled").values_list("restaurant_id", flat=True)
+                qs = qs.exclude(pk__in=booked_ids)
+        elif event_date:
             booked_ids = Booking.objects.filter(
                 event_date=event_date,
             ).exclude(status="cancelled").values_list("restaurant_id", flat=True)

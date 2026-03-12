@@ -34,36 +34,24 @@
         <!-- Search form -->
         <form action="{% url 'restaurant_list' %}" method="get" id="hero-form">
             <!-- Hidden inputs updated by JS dropdowns -->
-            <input type="hidden" name="city" id="city-hidden" value="Poznań">
+            <input type="hidden" name="city" id="city-hidden" value="">
             <input type="hidden" name="firm_type" id="type-hidden" value="">
             <input type="hidden" name="event_date" id="date-hidden" value="{% now 'Y-m-d' %}">
 
             <div class="hero-search-row">
 
-                <!-- City dropdown -->
+                <!-- City autocomplete -->
                 <div class="hero-dd-wrap" id="city-dd-wrap">
-                    <div class="hero-dd-trigger" id="city-trigger">
+                    <div class="hero-dd-trigger" id="city-trigger" style="cursor:text;">
                         <svg class="dd-icon" width="15" height="15" viewBox="0 0 24 24" fill="none"
                              stroke="rgba(0,0,0,0.28)" stroke-width="2" stroke-linecap="round">
                             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
                             <circle cx="12" cy="9" r="2.5"/>
                         </svg>
-                        <span class="dd-label selected" id="city-label">Poznań</span>
-                        <svg class="hero-dd-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                             stroke="rgba(0,0,0,0.2)" stroke-width="2" stroke-linecap="round">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
+                        <input type="text" class="city-autocomplete-input" id="city-input"
+                               placeholder="Wpisz miasto…" autocomplete="off">
                     </div>
-                    <div class="hero-dd-panel" id="city-panel">
-                        <div class="hero-dd-option active" data-value="Poznań">Poznań</div>
-                        <div class="hero-dd-option" data-value="Warszawa">Warszawa</div>
-                        <div class="hero-dd-option" data-value="Kraków">Kraków</div>
-                        <div class="hero-dd-option" data-value="Wrocław">Wrocław</div>
-                        <div class="hero-dd-option" data-value="Gdańsk">Gdańsk</div>
-                        <div class="hero-dd-option" data-value="Łódź">Łódź</div>
-                        <div class="hero-dd-option" data-value="Katowice">Katowice</div>
-                        <div class="hero-dd-option" data-value="Szczecin">Szczecin</div>
-                    </div>
+                    <div class="hero-dd-panel" id="city-panel"></div>
                 </div>
 
                 <!-- Date -->
@@ -292,11 +280,107 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    /* ── City dropdown ── */
-    var cityTrigger = document.getElementById('city-trigger');
-    var cityPanel   = document.getElementById('city-panel');
-    var cityLabel   = document.getElementById('city-label');
+    /* ── City autocomplete ── */
+    var cityInput   = document.getElementById('city-input');
     var cityHidden  = document.getElementById('city-hidden');
+    var cityPanel   = document.getElementById('city-panel');
+    var cityTrigger = document.getElementById('city-trigger');
+    var cityWrap    = document.getElementById('city-dd-wrap');
+    var cityDebounce = null;
+    var cityHighlightIdx = -1;
+
+    function setCityValue(val) {
+        cityHidden.value = val;
+        cityInput.value = val;
+        closeCityPanel();
+        updateSearchBtn();
+    }
+
+    function openCityPanel() {
+        cityTrigger.classList.add('open');
+        cityPanel.classList.add('open');
+    }
+
+    function closeCityPanel() {
+        cityTrigger.classList.remove('open');
+        cityPanel.classList.remove('open');
+        cityHighlightIdx = -1;
+    }
+
+    function renderCityOptions(cities) {
+        cityPanel.innerHTML = '';
+        cityHighlightIdx = -1;
+        if (!cities.length) {
+            closeCityPanel();
+            return;
+        }
+        cities.forEach(function(city) {
+            var opt = document.createElement('div');
+            opt.className = 'hero-dd-option';
+            opt.dataset.value = city;
+            opt.textContent = city;
+            opt.addEventListener('click', function(e) {
+                e.stopPropagation();
+                setCityValue(city);
+            });
+            cityPanel.appendChild(opt);
+        });
+        openCityPanel();
+    }
+
+    function highlightOption(idx) {
+        var opts = cityPanel.querySelectorAll('.hero-dd-option');
+        opts.forEach(function(o) { o.classList.remove('active'); });
+        if (idx >= 0 && idx < opts.length) {
+            opts[idx].classList.add('active');
+            opts[idx].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function fetchCities(query) {
+        var url = '{% url "city_autocomplete_api" %}?q=' + encodeURIComponent(query);
+        fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(cities) { renderCityOptions(cities); });
+    }
+
+    cityInput.addEventListener('input', function() {
+        var q = this.value.trim();
+        cityHidden.value = q;
+        updateSearchBtn();
+        clearTimeout(cityDebounce);
+        if (q.length === 0) {
+            cityDebounce = setTimeout(function() { fetchCities(''); }, 100);
+            return;
+        }
+        cityDebounce = setTimeout(function() { fetchCities(q); }, 200);
+    });
+
+    cityInput.addEventListener('focus', function() {
+        var q = this.value.trim();
+        fetchCities(q);
+    });
+
+    cityInput.addEventListener('keydown', function(e) {
+        var opts = cityPanel.querySelectorAll('.hero-dd-option');
+        if (!opts.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            cityHighlightIdx = Math.min(cityHighlightIdx + 1, opts.length - 1);
+            highlightOption(cityHighlightIdx);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            cityHighlightIdx = Math.max(cityHighlightIdx - 1, 0);
+            highlightOption(cityHighlightIdx);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (cityHighlightIdx >= 0 && cityHighlightIdx < opts.length) {
+                setCityValue(opts[cityHighlightIdx].dataset.value);
+            }
+        } else if (e.key === 'Escape') {
+            closeCityPanel();
+        }
+    });
 
     /* ── Type dropdown ── */
     var typeTrigger = document.getElementById('type-trigger');
@@ -334,45 +418,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    /* City trigger */
-    cityTrigger.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var isOpen = cityPanel.classList.contains('open');
-        closePanel(typeTrigger, typePanel);
-        if (isOpen) { closePanel(cityTrigger, cityPanel); }
-        else { openPanel(cityTrigger, cityPanel); }
-    });
-
-    /* City options */
-    cityPanel.querySelectorAll('.hero-dd-option').forEach(function(opt) {
-        opt.addEventListener('click', function() {
-            var val = this.dataset.value;
-            cityHidden.value = val;
-            cityLabel.textContent = val;
-            cityLabel.classList.add('selected');
-            cityPanel.querySelectorAll('.hero-dd-option').forEach(function(o) {
-                o.classList.remove('active');
-                var dot = o.querySelector('.dot');
-                if (dot) dot.remove();
-            });
-            this.classList.add('active');
-            if (!this.querySelector('.dot')) {
-                var dot = document.createElement('span');
-                dot.className = 'dot';
-                this.insertBefore(dot, this.firstChild);
-            }
-            closePanel(cityTrigger, cityPanel);
-            updateSearchBtn();
-        });
-        opt.addEventListener('mouseover', function() { this.style.background = 'rgba(0,0,0,0.03)'; });
-        opt.addEventListener('mouseout',  function() { this.style.background = ''; });
-    });
-
     /* Type trigger */
     typeTrigger.addEventListener('click', function(e) {
         e.stopPropagation();
         var isOpen = typePanel.classList.contains('open');
-        closePanel(cityTrigger, cityPanel);
+        closeCityPanel();
         if (isOpen) { closePanel(typeTrigger, typePanel); }
         else { openPanel(typeTrigger, typePanel); }
     });
@@ -382,7 +432,6 @@ document.addEventListener('DOMContentLoaded', function() {
         opt.addEventListener('click', function() {
             var val  = this.dataset.value;
             var icon = this.dataset.icon;
-            /* Strip innerHTML to just the label text (remove icon) */
             var text = this.textContent.trim().replace(/^\S+\s*/, '');
             typeHidden.value = val;
             typeIcon.textContent = icon;
@@ -414,14 +463,56 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     /* Close dropdowns on outside click */
-    document.addEventListener('click', function() {
-        closePanel(cityTrigger, cityPanel);
+    document.addEventListener('click', function(e) {
+        if (!cityWrap.contains(e.target)) {
+            closeCityPanel();
+        }
         closePanel(typeTrigger, typePanel);
     });
 
-    /* Prevent city/type trigger from double-closing */
     cityPanel.addEventListener('click', function(e) { e.stopPropagation(); });
     typePanel.addEventListener('click', function(e) { e.stopPropagation(); });
+
+    /* ── Geolocation → reverse geocoding → auto-fill city ── */
+    var CITY_STORAGE_KEY = 'eventbook_user_city';
+    var CITY_EXPIRY_KEY  = 'eventbook_user_city_ts';
+    var CITY_TTL_MS      = 7 * 24 * 60 * 60 * 1000; /* 7 dni */
+
+    function applySavedCity(city) {
+        if (city) {
+            setCityValue(city);
+        }
+    }
+
+    /* Sprawdź localStorage */
+    var savedCity = localStorage.getItem(CITY_STORAGE_KEY);
+    var savedTs   = parseInt(localStorage.getItem(CITY_EXPIRY_KEY) || '0', 10);
+    if (savedCity && (Date.now() - savedTs) < CITY_TTL_MS) {
+        applySavedCity(savedCity);
+    } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var lat = pos.coords.latitude;
+            var lon = pos.coords.longitude;
+            fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lon + '&accept-language=pl&zoom=10')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var city = '';
+                    if (data && data.address) {
+                        city = data.address.city || data.address.town || data.address.village || data.address.municipality || '';
+                    }
+                    if (city) {
+                        localStorage.setItem(CITY_STORAGE_KEY, city);
+                        localStorage.setItem(CITY_EXPIRY_KEY, String(Date.now()));
+                        /* Ustaw tylko jeśli użytkownik nie wpisał czegoś sam */
+                        if (!cityInput.value.trim()) {
+                            applySavedCity(city);
+                        }
+                    }
+                });
+        }, function() { /* Brak zgody — nic nie robimy */ });
+    }
+
+    updateSearchBtn();
 })();
 </script>
 {% endblock %}

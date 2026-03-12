@@ -223,6 +223,8 @@
     padding: 5px;
     z-index: 50;
     box-shadow: 0 12px 40px -6px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.04);
+    max-height: 240px;
+    overflow-y: auto;
 }
 .hero-dd-panel.open { display: block; }
 
@@ -250,6 +252,23 @@
     flex-shrink: 0;
 }
 .hero-dd-option .opt-icon { font-size: 14px; line-height: 1; }
+
+/* City autocomplete input */
+.city-autocomplete-input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    color: #1a1a1a;
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+}
+.city-autocomplete-input::placeholder {
+    color: rgba(0,0,0,0.32);
+    font-weight: 400;
+}
 
 /* Date input */
 .hero-date-input {

@@ -124,6 +124,17 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+# ── API: autocomplete miast ────────────────────────────────────────────────────
+
+def city_autocomplete_api(request):
+    """Zwraca listę miast (distinct) z bazy firm, opcjonalnie filtrowanych."""
+    q = request.GET.get("q", "").strip()
+    cities = Restaurant.objects.filter(is_active=True).values_list("city", flat=True).distinct()
+    if q:
+        cities = cities.filter(city__icontains=q)
+    return JsonResponse(sorted(set(cities)), safe=False)
+
+
 # ── Strona główna ──────────────────────────────────────────────────────────────
 
 def home(request):

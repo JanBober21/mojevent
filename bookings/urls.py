@@ -61,6 +61,7 @@ urlpatterns = [
     path("restauracje/<int:restaurant_pk>/zapisz-menu/", views.toggle_save_menu, name="toggle_save_menu"),
 
     # API
+    path("api/cities/", views.city_autocomplete_api, name="city_autocomplete_api"),
     path("api/menu-suggestions/", views.menu_suggestions_api, name="menu_suggestions_api"),
     path("api/dish-base/", views.dish_base_api, name="dish_base_api"),
     path("api/menu-ai-suggest/<int:pk>/", views.menu_ai_suggest, name="menu_ai_suggest"),

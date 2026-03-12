@@ -304,16 +304,8 @@
             }
         }
 
-        function positionPanel() {
-            if (sidebar) return;
-            var rect = trigger.getBoundingClientRect();
-            panel.style.top = (rect.bottom + 6) + 'px';
-            panel.style.left = (rect.left + rect.width / 2 - 160) + 'px';
-        }
-
         function openPickerPanel() {
             trigger.classList.add('open');
-            positionPanel();
             panel.classList.add('open');
             render();
         }

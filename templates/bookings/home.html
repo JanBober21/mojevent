@@ -308,10 +308,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function openCityPanel() {
         cityTrigger.classList.add('open');
-        var rect = cityTrigger.getBoundingClientRect();
-        cityPanel.style.top = (rect.bottom + 6) + 'px';
-        cityPanel.style.left = rect.left + 'px';
-        cityPanel.style.width = rect.width + 'px';
         cityPanel.classList.add('open');
     }
 
@@ -412,16 +408,8 @@ document.addEventListener('DOMContentLoaded', function() {
     /* ── Search button ── */
     var searchBtn   = document.getElementById('hero-search-btn');
 
-    function positionDropdown(trigger, panel) {
-        var rect = trigger.getBoundingClientRect();
-        panel.style.top = (rect.bottom + 6) + 'px';
-        panel.style.left = rect.left + 'px';
-        panel.style.width = rect.width + 'px';
-    }
-
     function openPanel(trigger, panel) {
         trigger.classList.add('open');
-        positionDropdown(trigger, panel);
         panel.classList.add('open');
     }
     function closePanel(trigger, panel) {

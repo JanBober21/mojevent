@@ -9,7 +9,8 @@
     position: relative;
     width: 100%;
     background: #f6f5f1;
-    overflow: hidden;
+    overflow-x: clip;
+    overflow-y: visible;
     padding: 80px 20px 72px;
     display: flex;
     align-items: center;
@@ -214,7 +215,9 @@
 /* Dropdown panel */
 .hero-dd-panel {
     display: none;
-    position: fixed;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
     background: #fff;
     border: 1px solid rgba(0,0,0,0.08);
     border-radius: 14px;
@@ -307,7 +310,10 @@
 }
 .cal-picker-panel {
     display: none;
-    position: fixed;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
     width: 320px;
     background: #fff;
     border: 1px solid rgba(0,0,0,0.08);

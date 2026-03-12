@@ -236,12 +236,12 @@ class RestaurantSearchForm(forms.Form):
     event_date = forms.DateField(
         label="Data",
         required=False,
-        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        widget=forms.HiddenInput(),
     )
     event_date_to = forms.DateField(
         label="Data do",
         required=False,
-        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        widget=forms.HiddenInput(),
     )
     event_dates = forms.CharField(
         label="Wybrane daty",
